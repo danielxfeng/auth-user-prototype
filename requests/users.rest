@@ -1,0 +1,101 @@
+# happy path
+###
+POST http://localhost:3003/api/users/
+Accept: application/json
+Content-Type: application/json
+
+{
+  "username": "testuser1",
+  "password": "testuser1"
+}
+
+###
+POST http://localhost:3003/api/users/login
+Accept: application/json
+Content-Type: application/json
+
+{
+  "username": "testuser1",
+  "password": "testuser1"
+}
+
+# Please attach the token received from the login response
+###
+GET http://localhost:3003/api/users
+Accept: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjMsInR5cGUiOiJVU0VSIiwianRpIjoiNGU1NmFmNzQtOTJlYS00OGE1LTg2YTEtYWY0NGQ1MmNmNTViIiwiaWF0IjoxNzY1OTYxMDI5LCJleHAiOjE3NjU5NjQ2Mjl9.hZo5zrhOb_wuYhtUZgHmQyt46kzyvPKqlc4z2cagHVk
+
+
+# invalid request
+###
+POST http://localhost:3003/api/users/
+Accept: application/json
+Content-Type: application/json
+
+{
+  "username": "te",
+  "password": "test",
+  "twoFa": false
+}
+
+###
+POST http://localhost:3003/api/users/2fa
+Accept: application/json
+Content-Type: application/json
+
+{
+  "sessionId": "test",
+  "twoFaCode": "123456"
+}
+
+###
+PUT http://localhost:3003/api/users/2fa
+Accept: application/json
+Content-Type: application/json
+
+{
+  "twoFa": true
+}
+
+###
+POST http://localhost:3003/api/users/password
+Accept: application/json
+Content-Type: application/json
+
+{
+  "username": "test",
+  "oldPassword": "test",
+  "newPassword": "newtest"
+}
+
+###
+GET http://localhost:3003/api/users/me
+Accept: application/json
+
+###
+PUT http://localhost:3003/api/users/me
+Accept: application/json
+Content-Type: application/json
+
+{
+  "id": 1,
+  "username": "newtest",
+  "avatar": "http://example.com/avatar.png",
+}
+
+###
+GET http://localhost:3003/api/users/
+Accept: application/json
+
+###
+GET http://localhost:3003/api/users/friends
+Accept: application/json
+
+###
+POST http://localhost:3003/api/users/friends
+Accept: application/json
+Content-Type: application/json
+
+{
+  "userId": 2
+}
