@@ -10,6 +10,8 @@ type UserHandler struct {
 	S *service.UserService
 }
 
+// @BasePath /users
+
 // CreateUserHandler godoc
 // @Summary Create user
 // @Description Register a new user
@@ -18,7 +20,7 @@ type UserHandler struct {
 // @Produce json
 // @Param body body dto.CreateUserRequest true "Create user payload"
 // @Success 201 {object} dto.UserWithoutTokenResponse
-// @Router /users/ [post]
+// @Router / [post]
 func (h *UserHandler) CreateUserHandler(c *gin.Context) {
 }
 
@@ -31,7 +33,7 @@ func (h *UserHandler) CreateUserHandler(c *gin.Context) {
 // @Param body body dto.LoginUserRequest true "Login user payload"
 // @Success 200 {object} dto.UserWithTokenResponse
 // @Failure 428 {object} dto.TwoFaPendingUserResponse
-// @Router /users/loginByIdentifier [post]
+// @Router /loginByIdentifier [post]
 func (h *UserHandler) LoginUserHandler(c *gin.Context) {
 }
 
@@ -42,7 +44,7 @@ func (h *UserHandler) LoginUserHandler(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Success 200 {object} dto.UserWithoutTokenResponse
-// @Router /users/me [get]
+// @Router /me [get]
 func (h *UserHandler) GetLoggedUserProfileHandler(c *gin.Context) {
 }
 
@@ -55,7 +57,7 @@ func (h *UserHandler) GetLoggedUserProfileHandler(c *gin.Context) {
 // @Security BearerAuth
 // @Param body body dto.UpdateUserPasswordRequest true "Update password payload"
 // @Success 200 {object} dto.UserWithTokenResponse
-// @Router /users/password [post]
+// @Router /password [post]
 func (h *UserHandler) UpdateLoggedUserPasswordHandler(c *gin.Context) {
 }
 
@@ -68,7 +70,7 @@ func (h *UserHandler) UpdateLoggedUserPasswordHandler(c *gin.Context) {
 // @Security BearerAuth
 // @Param body body dto.UpdateUserRequest true "Update profile payload"
 // @Success 200 {object} dto.UserWithoutTokenResponse
-// @Router /users/me [put]
+// @Router /me [put]
 func (h *UserHandler) UpdateLoggedUserProfileHandler(c *gin.Context) {
 }
 
@@ -79,7 +81,7 @@ func (h *UserHandler) UpdateLoggedUserProfileHandler(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Success 204 {object} nil
-// @Router /users/me [delete]
+// @Router /me [delete]
 func (h *UserHandler) DeleteLoggedUserHandler(c *gin.Context) {
 }
 
@@ -90,7 +92,7 @@ func (h *UserHandler) DeleteLoggedUserHandler(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Success 200 {object} dto.TwoFASetupResponse
-// @Router /users/2fa/setup [post]
+// @Router /2fa/setup [post]
 func (h *UserHandler) StartTwoFaSetupHandler(c *gin.Context) {
 }
 
@@ -103,7 +105,7 @@ func (h *UserHandler) StartTwoFaSetupHandler(c *gin.Context) {
 // @Security BearerAuth
 // @Param body body dto.TwoFAConfirmRequest true "2FA confirm payload"
 // @Success 200 {object} dto.UserWithTokenResponse
-// @Router /users/2fa/confirm [post]
+// @Router /2fa/confirm [post]
 func (h *UserHandler) ConfirmTwoFaSetupHandler(c *gin.Context) {
 }
 
@@ -116,7 +118,7 @@ func (h *UserHandler) ConfirmTwoFaSetupHandler(c *gin.Context) {
 // @Security BearerAuth
 // @Param body body dto.DisableTwoFARequest true "Disable 2FA payload"
 // @Success 200 {object} dto.UserWithTokenResponse
-// @Router /users/2fa/disable [put]
+// @Router /2fa/disable [put]
 func (h *UserHandler) DisableTwoFaHandler(c *gin.Context) {
 }
 
@@ -128,7 +130,7 @@ func (h *UserHandler) DisableTwoFaHandler(c *gin.Context) {
 // @Produce json
 // @Param body body dto.TwoFAChallengeRequest true "2FA challenge payload"
 // @Success 200 {object} dto.UserWithTokenResponse
-// @Router /users/2fa [post]
+// @Router /2fa [post]
 func (h *UserHandler) TwoFaSubmitHandler(c *gin.Context) {
 }
 
@@ -139,7 +141,7 @@ func (h *UserHandler) TwoFaSubmitHandler(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Success 200 {object} dto.UsersResponse
-// @Router /users [get]
+// @Router / [get]
 func (h *UserHandler) GetUsersWithLimitedInfoHandler(c *gin.Context) {
 }
 
@@ -151,7 +153,7 @@ func (h *UserHandler) GetUsersWithLimitedInfoHandler(c *gin.Context) {
 // @Security BearerAuth
 // @Param username path string true "Username"
 // @Success 200 {object} dto.SimpleUser
-// @Router /users/{username} [get]
+// @Router /{username} [get]
 func (h *UserHandler) GetUserLimitedInfoByUsernameHandler(c *gin.Context) {
 }
 
@@ -162,7 +164,7 @@ func (h *UserHandler) GetUserLimitedInfoByUsernameHandler(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Success 200 {object} dto.FriendsResponse
-// @Router /users/friends [get]
+// @Router /friends [get]
 func (h *UserHandler) GetLoggedUsersFriendsHandler(c *gin.Context) {
 }
 
@@ -175,7 +177,7 @@ func (h *UserHandler) GetLoggedUsersFriendsHandler(c *gin.Context) {
 // @Security BearerAuth
 // @Param body body dto.AddNewFriendRequest true "Add friend payload"
 // @Success 201 {object} dto.FriendResponse
-// @Router /users/friends [post]
+// @Router /friends [post]
 func (h *UserHandler) AddFriendHandler(c *gin.Context) {
 }
 
@@ -187,7 +189,7 @@ func (h *UserHandler) AddFriendHandler(c *gin.Context) {
 // @Security BearerAuth
 // @Param userId path int true "Friend user id"
 // @Success 204 {object} nil
-// @Router /users/friends/{userId} [delete]
+// @Router /friends/{userId} [delete]
 func (h *UserHandler) RemoveFriendHandler(c *gin.Context) {
 }
 
@@ -198,7 +200,7 @@ func (h *UserHandler) RemoveFriendHandler(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Success 200 {object} dto.UserValidationResponse
-// @Router /users/validate [post]
+// @Router /validate [post]
 func (h *UserHandler) ValidateUserHandler(c *gin.Context) {
 }
 
@@ -208,7 +210,7 @@ func (h *UserHandler) ValidateUserHandler(c *gin.Context) {
 // @Tags auth/user
 // @Produce redirect
 // @Success 302 {string} string "Redirect to Google OAuth consent screen"
-// @Router /users/google/login [get]
+// @Router /google/login [get]
 func (h *UserHandler) GoogleLoginHandler(c *gin.Context) {
 }
 
@@ -220,6 +222,6 @@ func (h *UserHandler) GoogleLoginHandler(c *gin.Context) {
 // @Param code query string true "OAuth code"
 // @Param state query string true "OAuth state"
 // @Success 302 {string} string "Redirect to frontend with user token"
-// @Router /users/google/callback [get]
+// @Router /google/callback [get]
 func (h *UserHandler) GoogleCallbackHandler(c *gin.Context) {
 }
