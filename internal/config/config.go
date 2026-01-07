@@ -1,4 +1,4 @@
-package configs
+package config
 
 import (
 	"os"
@@ -17,6 +17,8 @@ type Config struct {
 	TwoFaUrlPrefix        string
 	TwoFaTokenExpiry      int
 }
+
+var Cfg *Config
 
 func getEnvStrOrDefault(key string, defaultValue string) string {
 	value := os.Getenv(key)
@@ -39,8 +41,8 @@ func getEnvIntOrDefault(key string, defaultValue int) int {
 	return intValue
 }
 
-func LoadConfig() *Config {
-	c := &Config{
+func LoadConfig() {
+	Cfg = &Config{
 		DbAddress:             getEnvStrOrDefault("DB_ADDRESS", "data/auth_service_db.sqlite"),
 		JwtSecret:             getEnvStrOrDefault("JWT_SECRET", "test-secret"),
 		UserTokenExpiry:       getEnvIntOrDefault("USER_TOKEN_EXPIRY", 3600),
@@ -52,6 +54,4 @@ func LoadConfig() *Config {
 		TwoFaUrlPrefix:        getEnvStrOrDefault("TWO_FA_URL_PREFIX", "otpauth://totp/Transcendence?secret="),
 		TwoFaTokenExpiry:      getEnvIntOrDefault("TWO_FA_TOKEN_EXPIRY", 600),
 	}
-
-	return c
 }
