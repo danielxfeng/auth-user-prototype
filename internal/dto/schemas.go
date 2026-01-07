@@ -1,0 +1,299 @@
+package dto
+
+import (
+	"regexp"
+	"strings"
+
+	"github.com/go-playground/locales/en"
+	ut "github.com/go-playground/universal-translator"
+	"github.com/go-playground/validator/v10"
+	enTranslations "github.com/go-playground/validator/v10/translations/en"
+)
+
+var (
+	Validate *validator.Validate
+	Trans    ut.Translator
+)
+
+func InitValidator() {
+	en := en.New()
+	uni := ut.New(en, en)
+	Trans, _ = uni.GetTranslator("en")
+
+	Validate = validator.New()
+
+	enTranslations.RegisterDefaultTranslations(Validate, Trans)
+
+	Validate.RegisterValidation("trim", trimValue) // SIDE EFFECT: trims the value
+	Validate.RegisterValidation("username", validateUsername)
+	Validate.RegisterValidation("password", validatePassword)
+	Validate.RegisterValidation("identifier", validateIdentifier)
+	registerUsernameTranslation(Validate, Trans)
+	registerPasswordTranslation(Validate, Trans)
+	registerIdentifierTranslation(Validate, Trans)
+}
+
+// Space Trimming, SIDE EFFECT!
+func trimValue(fl validator.FieldLevel) bool {
+	value := fl.Field().String()
+
+	trimed := strings.TrimSpace(value)
+	fl.Field().SetString(trimed)
+
+	return true
+}
+
+// Username
+
+type UserName struct {
+	Username string `json:"username" validate:"required,trim,min=3,max=50,username"`
+}
+
+// Contains only letters, numbers, ".", "_" or "-"
+var usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
+
+func validateUsername(fl validator.FieldLevel) bool {
+	username := fl.Field().String()
+
+	return usernameRegex.MatchString(username)
+}
+
+func registerUsernameTranslation(v *validator.Validate, trans ut.Translator) {
+	v.RegisterTranslation(
+		"username",
+		trans,
+		func(ut ut.Translator) error {
+			return ut.Add(
+				"username",
+				"username may only contain letters, numbers, '.', '_' or '-'",
+				true,
+			)
+		},
+		func(ut ut.Translator, fe validator.FieldError) string {
+			msg, _ := ut.T("username")
+			return msg
+		},
+	)
+}
+
+// Password
+
+type Password struct {
+	Password string `json:"password" validate:"required,trim,min=3,max=20,password"`
+}
+
+type OldPassword struct {
+	OldPassword string `json:"oldPassword" validate:"required,trim,password,min=3,max=20"`
+}
+
+type NewPassword struct {
+	NewPassword string `json:"newPassword" validate:"required,trim,password,min=3,max=20"`
+}
+
+// Contains only letters, numbers, ".", "_" or "-"
+var passwordRegex = regexp.MustCompile(`^[A-Za-z0-9,.#$%@^;|_!*&?]+$`)
+
+func validatePassword(fl validator.FieldLevel) bool {
+	password := fl.Field().String()
+
+	return passwordRegex.MatchString(password)
+}
+
+func registerPasswordTranslation(v *validator.Validate, trans ut.Translator) {
+	v.RegisterTranslation(
+		"password",
+		trans,
+		func(ut ut.Translator) error {
+			return ut.Add(
+				"password",
+				"password may only contain letters, numbers, and the following symbols: ,.#$%@^;|_!*&?",
+				true,
+			)
+		},
+		func(ut ut.Translator, fe validator.FieldError) string {
+			msg, _ := ut.T("password")
+			return msg
+		},
+	)
+}
+
+// Identifier
+type Identifier struct {
+	Identifier string `json:"identifier" validate:"required,trim,min=3,max=100,identifier"` // username or email
+}
+
+func validateIdentifier(fl validator.FieldLevel) bool {
+	identifier := fl.Field().String()
+
+	usernameErrs := Validate.Var(identifier, "username")
+	emailErrs := Validate.Var(identifier, "email")
+
+	if usernameErrs == nil || emailErrs == nil {
+		return true
+	}
+
+	return false
+}
+
+func registerIdentifierTranslation(v *validator.Validate, trans ut.Translator) {
+	v.RegisterTranslation(
+		"identifier",
+		trans,
+		func(ut ut.Translator) error {
+			return ut.Add(
+				"identifier",
+				"identifier may only contain a valid username or email address",
+				true,
+			)
+		},
+		func(ut ut.Translator, fe validator.FieldError) string {
+			msg, _ := ut.T("identifier")
+			return msg
+		},
+	)
+}
+
+// User DTOs
+
+type User struct {
+	UserName
+	Email  string  `json:"email" validate:"required,trim,email,max=100"`
+	Avatar *string `json:"avatar" validate:"omitempty,url"`
+}
+
+type SimpleUser struct {
+	UserName
+	ID     uint    `json:"id"`
+	Avatar *string `json:"avatar" validate:"omitempty,url"`
+}
+
+type CreateUserRequest struct {
+	User
+	Password
+}
+
+type UpdateUserPasswordRequest struct {
+	OldPassword
+	NewPassword
+}
+
+type LoginUserRequest struct {
+	Identifier
+	Password
+}
+
+type UpdateUserRequest struct {
+	User
+}
+
+type UsernameRequest struct {
+	UserName
+}
+
+type ResponseAdditionalInfo struct {
+	ID            uint    `json:"id"`
+	TwoFA         bool    `json:"twoFa"`
+	Email         string  `json:"email"`
+	GoogleOauthId *string `json:"googleOauthId,omitempty"`
+	CreatedAt     int64   `json:"createdAt"`
+}
+
+type UserWithTokenResponse struct {
+	UserName
+	ResponseAdditionalInfo
+	Token string `json:"token"`
+}
+
+type UserWithoutTokenResponse struct {
+	UserName
+	ResponseAdditionalInfo
+}
+
+type UsersResponse struct {
+	Users []SimpleUser `json:"users"`
+}
+
+// For 2FA
+
+type SetTwoFARequest struct {
+	TwoFA bool `json:"twoFa" validate:"required"`
+}
+
+type DisableTwoFARequest struct {
+	Password
+}
+
+type TwoFAConfirmRequest struct {
+	TwoFACode  string `json:"twoFaCode" validate:"required,len=6,numeric"`
+	SetupToken string `json:"setupToken" validate:"required"`
+}
+
+type TwoFAChallengeRequest struct {
+	TwoFACode    string `json:"twoFaCode" validate:"required,len=6,numeric"`
+	SessionToken string `json:"sessionToken" validate:"required"`
+}
+
+type TwoFASetupResponse struct {
+	TwoFASecret string `json:"twoFaSecret" validate:"required"`
+	SetupToken  string `json:"setupToken" validate:"required"`
+}
+
+type TwoFAPendingUserResponse struct {
+	Message      string `json:"message"`
+	TwoFASecret  string `json:"twoFaSecret" validate:"required"`
+	SessionToken string `json:"sessionToken" validate:"required"`
+	TwoFAUrl     string `json:"twoFaUrl" validate:"required"`
+}
+
+type AddNewFriendRequest struct {
+	UserID uint `json:"userId" validate:"required"`
+}
+
+type FriendResponse struct {
+	SimpleUser
+	Online bool `json:"online"`
+}
+
+type FriendsResponse struct {
+	Friends []FriendResponse `json:"friends"`
+}
+
+type UserValidationResponse struct {
+	UserID uint `json:"userId"`
+}
+
+type GoogleOauthCallback struct {
+	Code  string `json:"code" validate:"required"`
+	State string `json:"state" validate:"required"`
+}
+
+type GoogleUserData struct {
+	GoogleOauthId string  `json:"googleOauthId"`
+	Email         string  `json:"email"`
+	Name          string  `json:"name"`
+	Picture       *string `json:"picture"`
+}
+
+type UserJwtPayload struct {
+	JTI    string `json:"jti"`
+	UserID int    `json:"userId"`
+	Type   string `json:"type"` // must be "USER"
+}
+
+type OauthStateJwtPayload struct {
+	JTI  string `json:"jti"`
+	Type string `json:"type"` // must be "GoogleOAuthState"
+}
+
+type TwoFaSetupJwtPayload struct {
+	JTI    string `json:"jti"`
+	UserID int    `json:"userId"`
+	Secret string `json:"secret"`
+	Type   string `json:"type"` // must be "2FA_SETUP"
+}
+
+type TwoFaJwtPayload struct {
+	JTI    string `json:"jti"`
+	UserID int    `json:"userId"`
+	Type   string `json:"type"` // must be "2FA"
+}
