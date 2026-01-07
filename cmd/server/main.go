@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/paularynty/transcendence/auth-service-go/internal/config"
+	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 	"github.com/paularynty/transcendence/auth-service-go/internal/routers"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util"
 
@@ -32,6 +33,10 @@ func SetupRouter(logger *slog.Logger) *gin.Engine {
 	return r
 }
 
+// @title Auth Service API
+// @version 1.0
+// @description Auth service for Transcendence
+// @BasePath /api
 func main() {
 	// config
 	godotenv.Load()
@@ -40,9 +45,12 @@ func main() {
 	// logger
 	util.InitLogger(slog.LevelInfo)
 
+	// validator
+	dto.InitValidator()
+
 	// router
 	r := SetupRouter(util.Logger)
-	routers.UsersRouter(r.Group("/api/user"))
+	routers.UsersRouter(r.Group("/api/users"))
 	routers.DevRouter(r.Group("/api/dev"))
 
 	r.GET("/api/ping", func(c *gin.Context) {
