@@ -8,6 +8,7 @@ import (
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	enTranslations "github.com/go-playground/validator/v10/translations/en"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 var (
@@ -275,25 +276,25 @@ type GoogleUserData struct {
 }
 
 type UserJwtPayload struct {
-	JTI    string `json:"jti"`
-	UserID int    `json:"userId"`
+	UserID uint   `json:"userId"`
 	Type   string `json:"type"` // must be "USER"
+	jwt.RegisteredClaims
 }
 
 type OauthStateJwtPayload struct {
-	JTI  string `json:"jti"`
 	Type string `json:"type"` // must be "GoogleOAuthState"
+	jwt.RegisteredClaims
 }
 
 type TwoFaSetupJwtPayload struct {
-	JTI    string `json:"jti"`
 	UserID int    `json:"userId"`
 	Secret string `json:"secret"`
 	Type   string `json:"type"` // must be "2FA_SETUP"
+	jwt.RegisteredClaims
 }
 
 type TwoFaJwtPayload struct {
-	JTI    string `json:"jti"`
 	UserID int    `json:"userId"`
 	Type   string `json:"type"` // must be "2FA"
+	jwt.RegisteredClaims
 }

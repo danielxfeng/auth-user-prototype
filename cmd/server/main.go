@@ -12,6 +12,8 @@ import (
 	"log/slog"
 
 	sloggin "github.com/samber/slog-gin"
+
+	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 )
 
 func SetupRouter(logger *slog.Logger) *gin.Engine {
@@ -23,8 +25,9 @@ func SetupRouter(logger *slog.Logger) *gin.Engine {
 		ServerErrorLevel: slog.LevelError,
 	}
 
-	r.Use(gin.Recovery())
 	r.Use(sloggin.NewWithConfig(logger, logConfig))
+	r.Use(middleware.PanicHandler())
+	r.Use(middleware.ErrorHandler())
 
 	return r
 }
