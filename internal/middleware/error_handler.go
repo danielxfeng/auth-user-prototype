@@ -1,6 +1,9 @@
 package middleware
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
+)
 
 type AuthError struct {
 	Status  int
@@ -32,14 +35,26 @@ func ErrorHandler() gin.HandlerFunc {
 
 		// Handle AuthError specifically
 		if authErr, ok := err.(*AuthError); ok {
-			c.JSON(authErr.Status, gin.H{
+			c.AbortWithStatusJSON(authErr.Status, gin.H{
 				"error": authErr.Message,
 			})
 			return
 		}
 
+		// Handle validation errors
+		if ve, ok := err.(validator.ValidationErrors); ok {
+			messages := make([]string, 0, len(ve))
+			for _, fe := range ve {
+				messages = append(messages, fe.Error())
+			}
+			c.AbortWithStatusJSON(400, gin.H{
+				"error": messages,
+			})
+			return
+		}
+
 		// Handle other error types or default to 500
-		c.JSON(500, gin.H{
+		c.AbortWithStatusJSON(500, gin.H{
 			"error": "Internal Server Error",
 		})
 	}

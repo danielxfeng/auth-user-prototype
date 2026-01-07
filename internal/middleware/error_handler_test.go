@@ -1,6 +1,7 @@
 package middleware_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 )
 
@@ -63,6 +65,39 @@ func TestErrorHandlerDifferentErrors(t *testing.T) {
 
 	if body["error"] != "Internal Server Error" {
 		t.Fatalf("unexpected error payload: %v", body)
+	}
+}
+
+func TestValidationMiddlewareReturnsValidationErrors(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	dto.InitValidator()
+
+	r := gin.New()
+	r.Use(middleware.ErrorHandler())
+	r.Use(middleware.ValidateBody[dto.UserName]())
+	r.POST("/validate", func(c *gin.Context) {
+		// Should not reach when validation fails
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/validate", bytes.NewBufferString(`{"username":"  a(   "}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	r.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d body=%s", resp.Code, resp.Body.String())
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(resp.Body.Bytes(), &body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	errorsField, ok := body["error"].([]any)
+	if !ok || len(errorsField) != 1 {
+		t.Fatalf("expected validation errors array, got %v", body)
 	}
 }
 
