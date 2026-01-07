@@ -6,6 +6,7 @@ import (
 )
 
 type Config struct {
+	GinMode               string
 	DbAddress             string
 	JwtSecret             string
 	UserTokenExpiry       int
@@ -43,6 +44,7 @@ func getEnvIntOrDefault(key string, defaultValue int) int {
 
 func LoadConfig() {
 	Cfg = &Config{
+		GinMode:               getEnvStrOrDefault("GIN_MODE", "debug"),
 		DbAddress:             getEnvStrOrDefault("DB_ADDRESS", "data/auth_service_db.sqlite"),
 		JwtSecret:             getEnvStrOrDefault("JWT_SECRET", "test-secret"),
 		UserTokenExpiry:       getEnvIntOrDefault("USER_TOKEN_EXPIRY", 3600),

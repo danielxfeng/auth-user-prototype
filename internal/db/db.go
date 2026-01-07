@@ -1,0 +1,48 @@
+package db
+
+import (
+	"context"
+
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+
+	"github.com/paularynty/transcendence/auth-service-go/internal/util"
+)
+
+var DB *gorm.DB
+
+func ConnectDB(dbName string) {
+	var err error
+	DB, err = gorm.Open(sqlite.Open(dbName), &gorm.Config{})
+
+	if err != nil {
+		panic("failed to connect to db: " + dbName)
+	}
+
+	DB.AutoMigrate(&User{})
+	DB.AutoMigrate(&Friend{})
+	DB.AutoMigrate(&Token{})
+	DB.AutoMigrate(&HeartBeat{})
+	util.Logger.Info("connected to db")
+}
+
+func ResetDB() {
+	util.Logger.Warn("resetting db...")
+
+	ctx := context.Background()
+	tables := []string{
+		"heart_beats",
+		"tokens",
+		"friends",
+		"users",
+	}
+
+	for _, table := range tables {
+		err := gorm.G[any](DB).Exec(ctx, "DELETE FROM "+table)
+		if err != nil {
+			util.Logger.Error("failed to reset table", table, err.Error())
+		}
+	}
+
+	util.Logger.Info("db is reset")
+}

@@ -12,9 +12,9 @@ var Logger *slog.Logger
 
 func InitLogger(level slog.Leveler) {
 	Logger = slog.New(tint.NewHandler(os.Stdout, &tint.Options{
-		Level: 		level,
+		Level:      level,
 		TimeFormat: time.Kitchen,
-		AddSource: 	true,
+		AddSource:  true,
 	}))
 
 	slog.SetDefault(Logger)

@@ -40,6 +40,7 @@ func main() {
 	// router
 	r := SetupRouter(util.Logger)
 	routers.UsersRouter(r.Group("/api/user"))
+	routers.DevRouter(r.Group("/api/dev"))
 
 	r.GET("/api/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
