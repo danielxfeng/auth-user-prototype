@@ -143,7 +143,7 @@ func (h *UserHandler) GetLoggedUserProfileHandler(c *gin.Context) {
 // @Security BearerAuth
 // @Param body body dto.UpdateUserPasswordRequest true "Update password payload"
 // @Success 200 {object} dto.UserWithTokenResponse
-// @Router /password [post]
+// @Router /password [put]
 func (h *UserHandler) UpdateLoggedUserPasswordHandler(c *gin.Context) {
 	userID, err := h.validateToken(c)
 	if err != nil {
@@ -321,7 +321,7 @@ func (h *UserHandler) TwoFaSubmitHandler(c *gin.Context) {
 // @Tags auth/user
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} dto.UsersResponse
+// @Success 200 {array} dto.SimpleUser
 // @Router / [get]
 func (h *UserHandler) GetUsersWithLimitedInfoHandler(c *gin.Context) {
 	_, err := h.validateToken(c)
@@ -345,7 +345,7 @@ func (h *UserHandler) GetUsersWithLimitedInfoHandler(c *gin.Context) {
 // @Tags auth/user
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} dto.UsersResponse
+// @Success 200 {array} dto.FriendResponse
 // @Router /friends [get]
 func (h *UserHandler) GetLoggedUsersFriendsHandler(c *gin.Context) {
 	userID, err := h.validateToken(c)

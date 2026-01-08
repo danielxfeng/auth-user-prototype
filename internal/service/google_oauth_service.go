@@ -46,7 +46,7 @@ func (s *UserService) GetGoogleOAuthURL(ctx context.Context) (string, error) {
 }
 
 func assembleFrontendRedirectURL(token *string, errMsg *string) string {
-	u, err := url.Parse(config.Cfg.FrontendUrl + "/oauth/callback")
+	u, err := url.Parse(config.Cfg.FrontendUrl + "/oauth/google/callback")
 	if err != nil {
 		util.Logger.Error("failed to parse frontend redirect url:", "err", err)
 		return "/unrecovered-error"

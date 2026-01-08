@@ -26,12 +26,12 @@ func TestGetAllUsersLimitedInfo(t *testing.T) {
 	})
 
 	t.Run("Success", func(t *testing.T) {
-		resp, err := svc.GetAllUsersLimitedInfo(ctx)
+		users, err := svc.GetAllUsersLimitedInfo(ctx)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(resp.Users) < 2 {
-			t.Errorf("expected at least 2 users, got %d", len(resp.Users))
+		if len(users) < 2 {
+			t.Errorf("expected at least 2 users, got %d", len(users))
 		}
 	})
 
@@ -135,17 +135,17 @@ func TestGetUserFriends(t *testing.T) {
 	svc.AddNewFriend(ctx, u1.ID, &dto.AddNewFriendRequest{UserID: u2.ID})
 
 	t.Run("Success", func(t *testing.T) {
-		resp, err := svc.GetUserFriends(ctx, u1.ID)
+		friends, err := svc.GetUserFriends(ctx, u1.ID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(resp.Friends) != 1 {
-			t.Errorf("expected 1 friend, got %d", len(resp.Friends))
+		if len(friends) != 1 {
+			t.Errorf("expected 1 friend, got %d", len(friends))
 		}
-		if resp.Friends[0].ID != u2.ID {
-			t.Errorf("expected friend ID %d, got %d", u2.ID, resp.Friends[0].ID)
+		if friends[0].ID != u2.ID {
+			t.Errorf("expected friend ID %d, got %d", u2.ID, friends[0].ID)
 		}
-		if resp.Friends[0].Online {
+		if friends[0].Online {
 			t.Error("expected friend to be offline")
 		}
 	})
@@ -157,11 +157,11 @@ func TestGetUserFriends(t *testing.T) {
 			LastSeenAt: time.Now(),
 		})
 
-		resp, err := svc.GetUserFriends(ctx, u1.ID)
+		friends, err := svc.GetUserFriends(ctx, u1.ID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if !resp.Friends[0].Online {
+		if !friends[0].Online {
 			t.Error("expected friend to be online")
 		}
 	})

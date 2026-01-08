@@ -251,7 +251,7 @@ func TestUsersRouter_UpdateUserPassword(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest(http.MethodPost, "/users/password", bytes.NewBuffer(body))
+	req := httptest.NewRequest(http.MethodPut, "/users/password", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+tokenStr)
 	resp := httptest.NewRecorder()
@@ -315,7 +315,7 @@ func TestUsersRouter_ValidateUser(t *testing.T) {
 	tokenStr, _ := jwt.SignUserToken(user.ID)
 	model.DB.Create(&model.Token{UserID: user.ID, Token: tokenStr})
 
-	req := httptest.NewRequest(http.MethodGet, "/users/validate", nil)
+	req := httptest.NewRequest(http.MethodPost, "/users/validate", nil)
 	req.Header.Set("Authorization", "Bearer "+tokenStr)
 	resp := httptest.NewRecorder()
 
@@ -371,9 +371,9 @@ func TestUsersRouter_Friends(t *testing.T) {
 	if resp.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", resp.Code)
 	}
-	var friendsRes dto.FriendsResponse
-	json.Unmarshal(resp.Body.Bytes(), &friendsRes)
-	if len(friendsRes.Friends) != 1 || friendsRes.Friends[0].ID != u2.ID {
+	var friends []dto.FriendResponse
+	json.Unmarshal(resp.Body.Bytes(), &friends)
+	if len(friends) != 1 || friends[0].ID != u2.ID {
 		t.Error("expected friend f2")
 	}
 }

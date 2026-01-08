@@ -25,7 +25,7 @@ func UsersRouter(r *gin.RouterGroup) {
 	auth.Use(middleware.Auth())
 
 	auth.GET("/me", h.GetLoggedUserProfileHandler)
-	auth.POST("/password", middleware.ValidateBody[dto.UpdateUserPasswordRequest](), h.UpdateLoggedUserPasswordHandler)
+	auth.PUT("/password", middleware.ValidateBody[dto.UpdateUserPasswordRequest](), h.UpdateLoggedUserPasswordHandler)
 	auth.PUT("/me", middleware.ValidateBody[dto.UpdateUserRequest](), h.UpdateLoggedUserProfileHandler)
 	auth.DELETE("/me", h.DeleteLoggedUserHandler)
 
@@ -36,6 +36,6 @@ func UsersRouter(r *gin.RouterGroup) {
 	auth.GET("/friends", h.GetLoggedUsersFriendsHandler)
 	auth.POST("/friends", middleware.ValidateBody[dto.AddNewFriendRequest](), h.AddFriendHandler)
 
-	auth.GET("/validate", h.ValidateUserHandler)
+	auth.POST("/validate", h.ValidateUserHandler)
 	auth.GET("/", h.GetUsersWithLimitedInfoHandler)
 }

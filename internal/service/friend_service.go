@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func (s *UserService) GetAllUsersLimitedInfo(ctx context.Context) (*dto.UsersResponse, error) {
+func (s *UserService) GetAllUsersLimitedInfo(ctx context.Context) ([]dto.SimpleUser, error) {
 	modelUsers, err := gorm.G[model.User](s.DB).Find(ctx)
 	if err != nil {
 		return nil, err
@@ -22,12 +22,10 @@ func (s *UserService) GetAllUsersLimitedInfo(ctx context.Context) (*dto.UsersRes
 		simpleUsers = append(simpleUsers, *userToSimpleUser(&mu))
 	}
 
-	return &dto.UsersResponse{
-		Users: simpleUsers,
-	}, nil
+	return simpleUsers, nil
 }
 
-func (s *UserService) GetUserFriends(ctx context.Context, userID uint) (*dto.FriendsResponse, error) {
+func (s *UserService) GetUserFriends(ctx context.Context, userID uint) ([]dto.FriendResponse, error) {
 	friends, err := gorm.G[model.Friend](s.DB).Preload("Friend", nil).Where("user_id = ?", userID).Find(ctx)
 	if err != nil {
 		return nil, err
@@ -48,9 +46,7 @@ func (s *UserService) GetUserFriends(ctx context.Context, userID uint) (*dto.Fri
 		})
 	}
 
-	return &dto.FriendsResponse{
-		Friends: friendResponses,
-	}, nil
+	return friendResponses, nil
 }
 
 func (s *UserService) AddNewFriend(ctx context.Context, userID uint, request *dto.AddNewFriendRequest) error {

@@ -184,7 +184,7 @@ func TestUsersRouter_UpdateUser_Failures(t *testing.T) {
 	})
 
 	updateReq := dto.UpdateUserRequest{
-		User: dto.User{UserName: dto.UserName{Username: "update_u2"}, Email: "u1@e.com"},
+		User: dto.User{UserName: dto.UserName{Username: "update_u2"}, Email: "u2@e.com"},
 	}
 	body, _ := json.Marshal(updateReq)
 	req := httptest.NewRequest(http.MethodPut, "/users/me", bytes.NewBuffer(body))
@@ -202,7 +202,7 @@ func TestUsersRouter_UpdateUser_Failures(t *testing.T) {
 		NewPassword: dto.NewPassword{NewPassword: "newpass"},
 	}
 	body, _ = json.Marshal(pwReq)
-	req = httptest.NewRequest(http.MethodPost, "/users/password", bytes.NewBuffer(body))
+	req = httptest.NewRequest(http.MethodPut, "/users/password", bytes.NewBuffer(body))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	resp = httptest.NewRecorder()
