@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
+	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 )
 
@@ -16,11 +16,11 @@ func TestGetAllUsersLimitedInfo(t *testing.T) {
 	ctx := context.Background()
 
 	// Create users
-	svc.CreateUser(ctx, &dto.CreateUserRequest{
+	_, _ = svc.CreateUser(ctx, &dto.CreateUserRequest{
 		User:     dto.User{UserName: dto.UserName{Username: "u1"}, Email: "u1@e.com"},
 		Password: dto.Password{Password: "p"},
 	})
-	svc.CreateUser(ctx, &dto.CreateUserRequest{
+	_, _ = svc.CreateUser(ctx, &dto.CreateUserRequest{
 		User:     dto.User{UserName: dto.UserName{Username: "u2"}, Email: "u2@e.com"},
 		Password: dto.Password{Password: "p"},
 	})
@@ -37,7 +37,7 @@ func TestGetAllUsersLimitedInfo(t *testing.T) {
 
 	t.Run("DBError", func(t *testing.T) {
 		sqlDB, _ := db.DB()
-		sqlDB.Close()
+		_ = sqlDB.Close()
 		_, err := svc.GetAllUsersLimitedInfo(ctx)
 		if err == nil {
 			t.Error("expected error on closed db")
@@ -109,7 +109,7 @@ func TestAddNewFriend(t *testing.T) {
 
 	t.Run("DBError", func(t *testing.T) {
 		sqlDB, _ := db.DB()
-		sqlDB.Close()
+		_ = sqlDB.Close()
 		err := svc.AddNewFriend(ctx, u1.ID, &dto.AddNewFriendRequest{UserID: u2.ID})
 		if err == nil {
 			t.Error("expected error on closed db")
@@ -130,9 +130,9 @@ func TestGetUserFriends(t *testing.T) {
 		User:     dto.User{UserName: dto.UserName{Username: "gf2"}, Email: "gf2@e.com"},
 		Password: dto.Password{Password: "p"},
 	})
-	
+
 	// Add friend
-	svc.AddNewFriend(ctx, u1.ID, &dto.AddNewFriendRequest{UserID: u2.ID})
+	_ = svc.AddNewFriend(ctx, u1.ID, &dto.AddNewFriendRequest{UserID: u2.ID})
 
 	t.Run("Success", func(t *testing.T) {
 		friends, err := svc.GetUserFriends(ctx, u1.ID)
@@ -153,7 +153,7 @@ func TestGetUserFriends(t *testing.T) {
 	t.Run("OnlineFriend", func(t *testing.T) {
 		// Manually insert heartbeat for u2
 		db.Create(&model.HeartBeat{
-			UserID: u2.ID,
+			UserID:     u2.ID,
 			LastSeenAt: time.Now(),
 		})
 
@@ -168,7 +168,7 @@ func TestGetUserFriends(t *testing.T) {
 
 	t.Run("DBError", func(t *testing.T) {
 		sqlDB, _ := db.DB()
-		sqlDB.Close()
+		_ = sqlDB.Close()
 		_, err := svc.GetUserFriends(ctx, u1.ID)
 		if err == nil {
 			t.Error("expected error on closed db")

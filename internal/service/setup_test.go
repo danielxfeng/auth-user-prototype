@@ -19,7 +19,7 @@ func setupTestDB(testName string) *gorm.DB {
 	// Add busy_timeout to reduce locking errors
 	// Add _foreign_keys=on to enforce FK constraints
 	dbName := "file:" + strings.ReplaceAll(testName, "/", "_") + "?mode=memory&cache=shared&_busy_timeout=5000&_foreign_keys=on"
-	
+
 	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{
 		TranslateError: true,
 	})
@@ -54,7 +54,7 @@ func setupConfig() {
 		TwoFaUrlPrefix:        "otpauth://totp/Transcendence?secret=",
 		TwoFaTokenExpiry:      600,
 	}
-	
+
 	// Mock logger to discard output during tests
 	util.Logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelError, // Only show errors

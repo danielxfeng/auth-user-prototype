@@ -58,7 +58,7 @@ func TestHandleGoogleOAuthCallback_InvalidState(t *testing.T) {
 	t.Run("InvalidState", func(t *testing.T) {
 		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "somecode", "invalidstate")
 		token, errMsg := parseRedirect(redirectURL)
-		
+
 		if token != "" {
 			t.Error("expected no token")
 		}
@@ -70,7 +70,7 @@ func TestHandleGoogleOAuthCallback_InvalidState(t *testing.T) {
 	t.Run("ExpiredState", func(t *testing.T) {
 		userToken, _ := jwt.SignUserToken(1)
 		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "somecode", userToken)
-		
+
 		_, errMsg := parseRedirect(redirectURL)
 		if errMsg == "" {
 			t.Error("expected error message for wrong token type")
@@ -107,7 +107,7 @@ func TestHandleGoogleOAuthCallback_Success(t *testing.T) {
 
 	t.Run("NewUser", func(t *testing.T) {
 		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "validcode", state)
-		
+
 		u, _ := url.Parse(redirectURL)
 		q := u.Query()
 		if q.Get("token") == "" {
@@ -131,7 +131,7 @@ func TestHandleGoogleOAuthCallback_Success(t *testing.T) {
 	t.Run("ExistingUser", func(t *testing.T) {
 		// User already created in previous run
 		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "validcode", state)
-		
+
 		u, _ := url.Parse(redirectURL)
 		q := u.Query()
 		if q.Get("token") == "" {
@@ -158,7 +158,7 @@ func TestHandleGoogleOAuthCallback_Errors(t *testing.T) {
 		ExchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
 			return nil, errors.New("exchange failed")
 		}
-		
+
 		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "code", state)
 		u, _ := url.Parse(redirectURL)
 		if u.Query().Get("error") == "" {
@@ -188,7 +188,7 @@ func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
-		User: dto.User{UserName: dto.UserName{Username: "linkuser"}, Email: "link@e.com"},
+		User:     dto.User{UserName: dto.UserName{Username: "linkuser"}, Email: "link@e.com"},
 		Password: dto.Password{Password: "p"},
 	})
 
@@ -199,8 +199,8 @@ func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		picture := "pic.png"
 		googleInfo := &dto.GoogleUserData{
-			ID: "g123",
-			Email: "link@e.com",
+			ID:      "g123",
+			Email:   "link@e.com",
 			Picture: &picture,
 		}
 
@@ -219,7 +219,7 @@ func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 
 	t.Run("EmailMismatch", func(t *testing.T) {
 		googleInfo := &dto.GoogleUserData{
-			ID: "g456",
+			ID:    "g456",
 			Email: "other@e.com",
 		}
 		err := svc.linkGoogleAccountToExistingUser(ctx, &modelUser, googleInfo)
@@ -231,7 +231,7 @@ func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 	t.Run("AlreadyLinked", func(t *testing.T) {
 		// modelUser already has Google ID from Success test
 		googleInfo := &dto.GoogleUserData{
-			ID: "g789",
+			ID:    "g789",
 			Email: "link@e.com",
 		}
 		err := svc.linkGoogleAccountToExistingUser(ctx, &modelUser, googleInfo)
@@ -252,11 +252,11 @@ func TestCreateNewUserFromGoogleInfo(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		googleInfo := &dto.GoogleUserData{
-			ID: "newg1",
+			ID:    "newg1",
 			Email: "new@g.com",
-			Name: "New User",
+			Name:  "New User",
 		}
-		
+
 		user, err := svc.createNewUserFromGoogleInfo(ctx, googleInfo, false)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -271,13 +271,13 @@ func TestCreateNewUserFromGoogleInfo(t *testing.T) {
 
 	t.Run("DuplicateUsernameRetry", func(t *testing.T) {
 		// Create a user that conflicts with the default google username
-		svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "google_gdup"}, Email: "existing@e.com"},
+		_, _ = svc.CreateUser(ctx, &dto.CreateUserRequest{
+			User:     dto.User{UserName: dto.UserName{Username: "google_gdup"}, Email: "existing@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
 
 		googleInfo := &dto.GoogleUserData{
-			ID: "gdup",
+			ID:    "gdup",
 			Email: "unique@g.com",
 		}
 
@@ -322,7 +322,7 @@ func TestHandleGoogleOAuthCallback_DBError(t *testing.T) {
 	}
 
 	sqlDB, _ := db.DB()
-	sqlDB.Close()
+	_ = sqlDB.Close()
 
 	redirectURL := svc.HandleGoogleOAuthCallback(ctx, "code", state)
 	u, _ := url.Parse(redirectURL)

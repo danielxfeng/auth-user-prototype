@@ -94,7 +94,7 @@ func TestLoginUser(t *testing.T) {
 		},
 		Password: dto.Password{Password: "password123"},
 	}
-	svc.CreateUser(ctx, createReq)
+	_, _ = svc.CreateUser(ctx, createReq)
 
 	t.Run("SuccessUsername", func(t *testing.T) {
 		req := &dto.LoginUserRequest{
@@ -161,10 +161,10 @@ func TestLoginUser(t *testing.T) {
 	t.Run("2FARequired", func(t *testing.T) {
 		// Enable 2FA for user
 		user, _ := svc.GetUserByID(ctx, 1) // First user created (loginuser)
-		svc.StartTwoFaSetup(ctx, user.ID)
+		_, _ = svc.StartTwoFaSetup(ctx, user.ID)
 		// We need to confirm it properly, but we can hack it for this test
 		db.Model(&model.User{}).Where("id = ?", user.ID).Update("two_fa_token", "secret")
-		
+
 		req := &dto.LoginUserRequest{
 			Identifier: dto.Identifier{Identifier: "loginuser"},
 			Password:   dto.Password{Password: "password123"},
@@ -207,8 +207,8 @@ func TestLoginUser(t *testing.T) {
 
 	t.Run("InvalidHash", func(t *testing.T) {
 		// Manually create user with invalid hash
-		svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "badhash"}, Email: "badhash@e.com"},
+		_, _ = svc.CreateUser(ctx, &dto.CreateUserRequest{
+			User:     dto.User{UserName: dto.UserName{Username: "badhash"}, Email: "badhash@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
 		badHash := "invalid_hash"
@@ -320,7 +320,7 @@ func TestUpdateUserPassword(t *testing.T) {
 
 	t.Run("OAuthUser", func(t *testing.T) {
 		oauthUser := dto.GoogleUserData{
-			ID: "passoauth",
+			ID:    "passoauth",
 			Email: "passoauth@e.com",
 		}
 		user, _ := svc.createNewUserFromGoogleInfo(ctx, &oauthUser, false)
@@ -342,8 +342,8 @@ func TestUpdateUserPassword(t *testing.T) {
 
 	t.Run("InvalidHash", func(t *testing.T) {
 		// Manually create user with invalid hash
-		svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "badhash2"}, Email: "badhash2@e.com"},
+		_, _ = svc.CreateUser(ctx, &dto.CreateUserRequest{
+			User:     dto.User{UserName: dto.UserName{Username: "badhash2"}, Email: "badhash2@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
 		badHash := "invalid_hash"
@@ -404,8 +404,8 @@ func TestUpdateUserProfile(t *testing.T) {
 
 	t.Run("Duplicate", func(t *testing.T) {
 		// Create another user
-		svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "other"}, Email: "other@e.com"},
+		_, _ = svc.CreateUser(ctx, &dto.CreateUserRequest{
+			User:     dto.User{UserName: dto.UserName{Username: "other"}, Email: "other@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
 
@@ -548,15 +548,15 @@ func TestDBErrors(t *testing.T) {
 	t.Run("CreateUser", func(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
-		
+
 		req := &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "db1"}, Email: "db1@e.com"},
+			User:     dto.User{UserName: dto.UserName{Username: "db1"}, Email: "db1@e.com"},
 			Password: dto.Password{Password: "p"},
 		}
 
 		sqlDB, _ := db.DB()
-		sqlDB.Close()
-		
+		_ = sqlDB.Close()
+
 		_, err := svc.CreateUser(ctx, req)
 		if err == nil {
 			t.Error("expected db error")
@@ -566,15 +566,15 @@ func TestDBErrors(t *testing.T) {
 	t.Run("LoginUser", func(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
-		
+
 		req := &dto.LoginUserRequest{
 			Identifier: dto.Identifier{Identifier: "db1"},
 			Password:   dto.Password{Password: "p"},
 		}
 
 		sqlDB, _ := db.DB()
-		sqlDB.Close()
-		
+		_ = sqlDB.Close()
+
 		_, err := svc.LoginUser(ctx, req)
 		if err == nil {
 			t.Error("expected db error")
@@ -584,10 +584,10 @@ func TestDBErrors(t *testing.T) {
 	t.Run("GetUserByID", func(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
-		
+
 		sqlDB, _ := db.DB()
-		sqlDB.Close()
-		
+		_ = sqlDB.Close()
+
 		_, err := svc.GetUserByID(ctx, 1)
 		if err == nil {
 			t.Error("expected db error")
@@ -597,15 +597,15 @@ func TestDBErrors(t *testing.T) {
 	t.Run("UpdateUserPassword", func(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
-		
+
 		req := &dto.UpdateUserPasswordRequest{
 			OldPassword: dto.OldPassword{OldPassword: "p"},
 			NewPassword: dto.NewPassword{NewPassword: "p2"},
 		}
 
 		sqlDB, _ := db.DB()
-		sqlDB.Close()
-		
+		_ = sqlDB.Close()
+
 		_, err := svc.UpdateUserPassword(ctx, 1, req)
 		if err == nil {
 			t.Error("expected db error")
@@ -615,14 +615,14 @@ func TestDBErrors(t *testing.T) {
 	t.Run("UpdateUserProfile", func(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
-		
+
 		req := &dto.UpdateUserRequest{
 			User: dto.User{UserName: dto.UserName{Username: "n"}, Email: "n@e.com"},
 		}
 
 		sqlDB, _ := db.DB()
-		sqlDB.Close()
-		
+		_ = sqlDB.Close()
+
 		_, err := svc.UpdateUserProfile(ctx, 1, req)
 		if err == nil {
 			t.Error("expected db error")
@@ -632,36 +632,36 @@ func TestDBErrors(t *testing.T) {
 	t.Run("DeleteUser", func(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
-		
+
 		sqlDB, _ := db.DB()
-		sqlDB.Close()
-		
+		_ = sqlDB.Close()
+
 		err := svc.DeleteUser(ctx, 1)
 		if err == nil {
 			t.Error("expected db error")
 		}
 	})
-	
+
 	t.Run("ValidateUserToken", func(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
-		
+
 		sqlDB, _ := db.DB()
-		sqlDB.Close()
-		
+		_ = sqlDB.Close()
+
 		err := svc.ValidateUserToken(ctx, "token", 1)
 		if err == nil {
 			t.Error("expected db error")
 		}
 	})
-	
+
 	t.Run("LogoutUser", func(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
-		
+
 		sqlDB, _ := db.DB()
-		sqlDB.Close()
-		
+		_ = sqlDB.Close()
+
 		err := svc.LogoutUser(ctx, 1)
 		if err == nil {
 			t.Error("expected db error")

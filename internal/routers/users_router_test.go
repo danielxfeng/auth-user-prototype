@@ -29,7 +29,7 @@ import (
 
 func setupUsersRouterTestUnique(t *testing.T) (*gin.Engine, func()) {
 	gin.SetMode(gin.TestMode)
-	
+
 	// Mock Logger
 	util.Logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelError,
@@ -53,12 +53,12 @@ func setupUsersRouterTestUnique(t *testing.T) (*gin.Engine, func()) {
 	// Use unique DB name for each test run to avoid lock issues
 	// Sanitize test name
 	dbName := "file:" + strings.ReplaceAll(t.Name(), "/", "_") + "?mode=memory&cache=shared&_busy_timeout=5000"
-	
+
 	model.DB, err = gorm.Open(sqlite.Open(dbName), &gorm.Config{TranslateError: true})
 	if err != nil {
 		t.Fatalf("failed to connect to db: %v", err)
 	}
-	
+
 	// Explicitly enable foreign keys
 	model.DB.Exec("PRAGMA foreign_keys = ON")
 
@@ -83,7 +83,7 @@ func setupUsersRouterTestUnique(t *testing.T) (*gin.Engine, func()) {
 		if model.DB != nil {
 			sqlDB, _ := model.DB.DB()
 			if sqlDB != nil {
-				sqlDB.Close()
+				_ = sqlDB.Close()
 			}
 			model.DB = nil
 		}
@@ -95,7 +95,7 @@ func TestUsersRouter_CreateUser(t *testing.T) {
 	defer cleanup()
 
 	reqBody := dto.CreateUserRequest{
-		User: dto.User{UserName: dto.UserName{Username: "newuser"}, Email: "new@example.com"},
+		User:     dto.User{UserName: dto.UserName{Username: "newuser"}, Email: "new@example.com"},
 		Password: dto.Password{Password: "password123"},
 	}
 	body, _ := json.Marshal(reqBody)
@@ -111,7 +111,7 @@ func TestUsersRouter_CreateUser(t *testing.T) {
 	}
 
 	var user dto.UserWithoutTokenResponse
-	json.Unmarshal(resp.Body.Bytes(), &user)
+	_ = json.Unmarshal(resp.Body.Bytes(), &user)
 	if user.Username != "newuser" {
 		t.Errorf("expected username newuser, got %s", user.Username)
 	}
@@ -123,11 +123,11 @@ func TestUsersRouter_LoginUser(t *testing.T) {
 
 	// Create user
 	createReq := dto.CreateUserRequest{
-		User: dto.User{UserName: dto.UserName{Username: "loginuser"}, Email: "login@example.com"},
+		User:     dto.User{UserName: dto.UserName{Username: "loginuser"}, Email: "login@example.com"},
 		Password: dto.Password{Password: "password123"},
 	}
 	createBody, _ := json.Marshal(createReq)
-	
+
 	cReq := httptest.NewRequest(http.MethodPost, "/users/", bytes.NewBuffer(createBody))
 	cReq.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(httptest.NewRecorder(), cReq)
@@ -150,7 +150,7 @@ func TestUsersRouter_LoginUser(t *testing.T) {
 	}
 
 	var res service.LoginResult
-	json.Unmarshal(resp.Body.Bytes(), &res)
+	_ = json.Unmarshal(resp.Body.Bytes(), &res)
 	if res.User == nil || res.User.Token == "" {
 		t.Errorf("expected token in response. Body: %s", resp.Body.String())
 	}
@@ -161,8 +161,8 @@ func TestUsersRouter_GetProfile(t *testing.T) {
 	defer cleanup()
 
 	user := model.User{
-		Username: "profileuser", 
-		Email: "profile@example.com",
+		Username: "profileuser",
+		Email:    "profile@example.com",
 	}
 	model.DB.Create(&user)
 
@@ -180,7 +180,7 @@ func TestUsersRouter_GetProfile(t *testing.T) {
 	}
 
 	var res dto.UserWithoutTokenResponse
-	json.Unmarshal(resp.Body.Bytes(), &res)
+	_ = json.Unmarshal(resp.Body.Bytes(), &res)
 	if res.Username != "profileuser" {
 		t.Errorf("expected username profileuser, got %s", res.Username)
 	}
@@ -227,7 +227,7 @@ func TestUsersRouter_UpdateUserProfile(t *testing.T) {
 	}
 
 	var res dto.UserWithoutTokenResponse
-	json.Unmarshal(resp.Body.Bytes(), &res)
+	_ = json.Unmarshal(resp.Body.Bytes(), &res)
 	if res.Username != "newname" {
 		t.Errorf("expected new username, got %s", res.Username)
 	}
@@ -239,7 +239,7 @@ func TestUsersRouter_UpdateUserPassword(t *testing.T) {
 
 	svc := service.NewUserService(model.DB)
 	userResp, _ := svc.CreateUser(context.Background(), &dto.CreateUserRequest{
-		User: dto.User{UserName: dto.UserName{Username: "pw"}, Email: "pw@e.com"},
+		User:     dto.User{UserName: dto.UserName{Username: "pw"}, Email: "pw@e.com"},
 		Password: dto.Password{Password: "oldpass"},
 	})
 	tokenStr, _ := jwt.SignUserToken(userResp.ID)
@@ -324,9 +324,9 @@ func TestUsersRouter_ValidateUser(t *testing.T) {
 	if resp.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", resp.Code)
 	}
-	
+
 	var res dto.UserValidationResponse
-	json.Unmarshal(resp.Body.Bytes(), &res)
+	_ = json.Unmarshal(resp.Body.Bytes(), &res)
 	if res.UserID != user.ID {
 		t.Errorf("expected userID %d, got %d", user.ID, res.UserID)
 	}
@@ -338,11 +338,11 @@ func TestUsersRouter_Friends(t *testing.T) {
 
 	svc := service.NewUserService(model.DB)
 	u1, _ := svc.CreateUser(context.Background(), &dto.CreateUserRequest{
-		User: dto.User{UserName: dto.UserName{Username: "f1"}, Email: "f1@e.com"},
+		User:     dto.User{UserName: dto.UserName{Username: "f1"}, Email: "f1@e.com"},
 		Password: dto.Password{Password: "p"},
 	})
 	u2, _ := svc.CreateUser(context.Background(), &dto.CreateUserRequest{
-		User: dto.User{UserName: dto.UserName{Username: "f2"}, Email: "f2@e.com"},
+		User:     dto.User{UserName: dto.UserName{Username: "f2"}, Email: "f2@e.com"},
 		Password: dto.Password{Password: "p"},
 	})
 
@@ -372,7 +372,7 @@ func TestUsersRouter_Friends(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", resp.Code)
 	}
 	var friends []dto.FriendResponse
-	json.Unmarshal(resp.Body.Bytes(), &friends)
+	_ = json.Unmarshal(resp.Body.Bytes(), &friends)
 	if len(friends) != 1 || friends[0].ID != u2.ID {
 		t.Error("expected friend f2")
 	}
@@ -384,7 +384,7 @@ func TestUsersRouter_2FA(t *testing.T) {
 
 	svc := service.NewUserService(model.DB)
 	user, _ := svc.CreateUser(context.Background(), &dto.CreateUserRequest{
-		User: dto.User{UserName: dto.UserName{Username: "2fa"}, Email: "2fa@e.com"},
+		User:     dto.User{UserName: dto.UserName{Username: "2fa"}, Email: "2fa@e.com"},
 		Password: dto.Password{Password: "pass"},
 	})
 	tokenStr, _ := jwt.SignUserToken(user.ID)
@@ -400,7 +400,7 @@ func TestUsersRouter_2FA(t *testing.T) {
 		t.Fatalf("setup failed: %d", resp.Code)
 	}
 	var setupRes dto.TwoFASetupResponse
-	json.Unmarshal(resp.Body.Bytes(), &setupRes)
+	_ = json.Unmarshal(resp.Body.Bytes(), &setupRes)
 
 	// Let DB settle
 	time.Sleep(200 * time.Millisecond)
@@ -443,7 +443,7 @@ func TestUsersRouter_2FA(t *testing.T) {
 	// But `issueNewTokenForUser` revokes old tokens if true passed. Confirm passed true.
 	// So tokenStr is invalid. We need the one from confirm response.
 	var userRes dto.UserWithTokenResponse
-	json.Unmarshal(resp.Body.Bytes(), &userRes)
+	_ = json.Unmarshal(resp.Body.Bytes(), &userRes)
 	tokenStr = userRes.Token
 
 	// Let DB settle
@@ -511,7 +511,7 @@ func TestUsersRouter_GoogleOAuth(t *testing.T) {
 	if resp.Code != http.StatusFound {
 		t.Fatalf("expected status 302, got %d", resp.Code)
 	}
-	
+
 	redirectURL, _ := url.Parse(resp.Header().Get("Location"))
 	token := redirectURL.Query().Get("token")
 	if token == "" {

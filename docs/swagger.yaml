@@ -45,18 +45,7 @@ definitions:
       online:
         type: boolean
       username:
-        maxLength: 50
-        minLength: 3
         type: string
-    required:
-    - username
-    type: object
-  dto.FriendsResponse:
-    properties:
-      friends:
-        items:
-          $ref: '#/definitions/dto.FriendResponse'
-        type: array
     type: object
   dto.LoginUserRequest:
     properties:
@@ -80,11 +69,7 @@ definitions:
       id:
         type: integer
       username:
-        maxLength: 50
-        minLength: 3
         type: string
-    required:
-    - username
     type: object
   dto.TwoFAChallengeRequest:
     properties:
@@ -112,14 +97,6 @@ definitions:
         type: string
       sessionToken:
         type: string
-      twoFaSecret:
-        type: string
-      twoFaUrl:
-        type: string
-    required:
-    - sessionToken
-    - twoFaSecret
-    - twoFaUrl
     type: object
   dto.TwoFASetupResponse:
     properties:
@@ -167,6 +144,8 @@ definitions:
     type: object
   dto.UserWithTokenResponse:
     properties:
+      avatar:
+        type: string
       createdAt:
         type: integer
       email:
@@ -180,14 +159,12 @@ definitions:
       twoFa:
         type: boolean
       username:
-        maxLength: 50
-        minLength: 3
         type: string
-    required:
-    - username
     type: object
   dto.UserWithoutTokenResponse:
     properties:
+      avatar:
+        type: string
       createdAt:
         type: integer
       email:
@@ -199,18 +176,7 @@ definitions:
       twoFa:
         type: boolean
       username:
-        maxLength: 50
-        minLength: 3
         type: string
-    required:
-    - username
-    type: object
-  dto.UsersResponse:
-    properties:
-      users:
-        items:
-          $ref: '#/definitions/dto.SimpleUser'
-        type: array
     type: object
 info:
   contact: {}
@@ -227,7 +193,9 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dto.UsersResponse'
+            items:
+              $ref: '#/definitions/dto.SimpleUser'
+            type: array
       security:
       - BearerAuth: []
       summary: List users (limited info)
@@ -252,27 +220,6 @@ paths:
           schema:
             $ref: '#/definitions/dto.UserWithoutTokenResponse'
       summary: Create user
-      tags:
-      - auth/user
-  /{username}:
-    get:
-      description: Fetch a user's limited info by username
-      parameters:
-      - description: Username
-        in: path
-        name: username
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.SimpleUser'
-      security:
-      - BearerAuth: []
-      summary: Get user by username (limited info)
       tags:
       - auth/user
   /2fa:
@@ -369,7 +316,9 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dto.FriendsResponse'
+            items:
+              $ref: '#/definitions/dto.FriendResponse'
+            type: array
       security:
       - BearerAuth: []
       summary: List friends
@@ -391,30 +340,9 @@ paths:
       responses:
         "201":
           description: Created
-          schema:
-            $ref: '#/definitions/dto.FriendResponse'
       security:
       - BearerAuth: []
       summary: Add friend
-      tags:
-      - auth/user
-  /friends/{userId}:
-    delete:
-      description: Remove a friend by user id
-      parameters:
-      - description: Friend user id
-        in: path
-        name: userId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-      security:
-      - BearerAuth: []
-      summary: Remove friend
       tags:
       - auth/user
   /google/callback:
@@ -476,6 +404,19 @@ paths:
       summary: Login user
       tags:
       - auth/user
+  /logout:
+    delete:
+      description: Logout the authenticated user
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Logout user
+      tags:
+      - auth/user
   /me:
     delete:
       description: Delete the authenticated user's account
@@ -527,7 +468,7 @@ paths:
       tags:
       - auth/user
   /password:
-    post:
+    put:
       consumes:
       - application/json
       description: Change password for the authenticated user

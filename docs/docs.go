@@ -34,7 +34,10 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.UsersResponse"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dto.SimpleUser"
+                            }
                         }
                     }
                 }
@@ -228,7 +231,10 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.FriendsResponse"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dto.FriendResponse"
+                            }
                         }
                     }
                 }
@@ -263,41 +269,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/dto.FriendResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/friends/{userId}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Remove a friend by user id",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth/user"
-                ],
-                "summary": "Remove friend",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Friend user id",
-                        "name": "userId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
+                        "description": "Created"
                     }
                 }
             }
@@ -392,6 +364,28 @@ const docTemplate = `{
                 }
             }
         },
+        "/logout": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Logout the authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth/user"
+                ],
+                "summary": "Logout user",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
         "/me": {
             "get": {
                 "security": [
@@ -475,7 +469,7 @@ const docTemplate = `{
             }
         },
         "/password": {
-            "post": {
+            "put": {
                 "security": [
                     {
                         "BearerAuth": []
@@ -537,40 +531,6 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/{username}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Fetch a user's limited info by username",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth/user"
-                ],
-                "summary": "Get user by username (limited info)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Username",
-                        "name": "username",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.SimpleUser"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
@@ -627,9 +587,6 @@ const docTemplate = `{
         },
         "dto.FriendResponse": {
             "type": "object",
-            "required": [
-                "username"
-            ],
             "properties": {
                 "avatar": {
                     "type": "string"
@@ -641,20 +598,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "username": {
-                    "type": "string",
-                    "maxLength": 50,
-                    "minLength": 3
-                }
-            }
-        },
-        "dto.FriendsResponse": {
-            "type": "object",
-            "properties": {
-                "friends": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/dto.FriendResponse"
-                    }
+                    "type": "string"
                 }
             }
         },
@@ -680,9 +624,6 @@ const docTemplate = `{
         },
         "dto.SimpleUser": {
             "type": "object",
-            "required": [
-                "username"
-            ],
             "properties": {
                 "avatar": {
                     "type": "string"
@@ -691,9 +632,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "username": {
-                    "type": "string",
-                    "maxLength": 50,
-                    "minLength": 3
+                    "type": "string"
                 }
             }
         },
@@ -729,22 +668,11 @@ const docTemplate = `{
         },
         "dto.TwoFAPendingUserResponse": {
             "type": "object",
-            "required": [
-                "sessionToken",
-                "twoFaSecret",
-                "twoFaUrl"
-            ],
             "properties": {
                 "message": {
                     "type": "string"
                 },
                 "sessionToken": {
-                    "type": "string"
-                },
-                "twoFaSecret": {
-                    "type": "string"
-                },
-                "twoFaUrl": {
                     "type": "string"
                 }
             }
@@ -814,10 +742,10 @@ const docTemplate = `{
         },
         "dto.UserWithTokenResponse": {
             "type": "object",
-            "required": [
-                "username"
-            ],
             "properties": {
+                "avatar": {
+                    "type": "string"
+                },
                 "createdAt": {
                     "type": "integer"
                 },
@@ -837,18 +765,16 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "username": {
-                    "type": "string",
-                    "maxLength": 50,
-                    "minLength": 3
+                    "type": "string"
                 }
             }
         },
         "dto.UserWithoutTokenResponse": {
             "type": "object",
-            "required": [
-                "username"
-            ],
             "properties": {
+                "avatar": {
+                    "type": "string"
+                },
                 "createdAt": {
                     "type": "integer"
                 },
@@ -865,20 +791,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "username": {
-                    "type": "string",
-                    "maxLength": 50,
-                    "minLength": 3
-                }
-            }
-        },
-        "dto.UsersResponse": {
-            "type": "object",
-            "properties": {
-                "users": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/dto.SimpleUser"
-                    }
+                    "type": "string"
                 }
             }
         }

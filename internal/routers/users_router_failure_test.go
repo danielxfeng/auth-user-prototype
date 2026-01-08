@@ -29,7 +29,7 @@ import (
 
 func setupUsersRouterTestFailure(t *testing.T) (*gin.Engine, func()) {
 	gin.SetMode(gin.TestMode)
-	
+
 	util.Logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
@@ -53,7 +53,7 @@ func setupUsersRouterTestFailure(t *testing.T) (*gin.Engine, func()) {
 		t.Fatalf("failed to connect to db: %v", err)
 	}
 	model.DB.Exec("PRAGMA foreign_keys = ON")
-	
+
 	err = model.DB.AutoMigrate(&model.User{}, &model.Friend{}, &model.Token{}, &model.HeartBeat{})
 	if err != nil {
 		t.Fatalf("failed to migrate db: %v", err)
@@ -75,7 +75,7 @@ func setupUsersRouterTestFailure(t *testing.T) (*gin.Engine, func()) {
 		if model.DB != nil {
 			sqlDB, _ := model.DB.DB()
 			if sqlDB != nil {
-				sqlDB.Close()
+				_ = sqlDB.Close()
 			}
 			model.DB = nil
 		}
@@ -100,7 +100,7 @@ func TestUsersRouter_CreateUser_Failures(t *testing.T) {
 	// 2. Duplicate User
 	// Create first
 	validReq := dto.CreateUserRequest{
-		User: dto.User{UserName: dto.UserName{Username: "dupuser"}, Email: "dup@e.com"},
+		User:     dto.User{UserName: dto.UserName{Username: "dupuser"}, Email: "dup@e.com"},
 		Password: dto.Password{Password: "pass"},
 	}
 	body, _ := json.Marshal(validReq)
@@ -147,8 +147,8 @@ func TestUsersRouter_LoginUser_Failures(t *testing.T) {
 	// 3. Invalid Credentials
 	// Create user
 	svc := service.NewUserService(model.DB)
-	svc.CreateUser(context.Background(), &dto.CreateUserRequest{
-		User: dto.User{UserName: dto.UserName{Username: "loginfail"}, Email: "fail@e.com"},
+	_, _ = svc.CreateUser(context.Background(), &dto.CreateUserRequest{
+		User:     dto.User{UserName: dto.UserName{Username: "loginfail"}, Email: "fail@e.com"},
 		Password: dto.Password{Password: "correct"},
 	})
 
@@ -170,7 +170,7 @@ func TestUsersRouter_UpdateUser_Failures(t *testing.T) {
 
 	svc := service.NewUserService(model.DB)
 	u, _ := svc.CreateUser(context.Background(), &dto.CreateUserRequest{
-		User: dto.User{UserName: dto.UserName{Username: "u1"}, Email: "u1@e.com"},
+		User:     dto.User{UserName: dto.UserName{Username: "u1"}, Email: "u1@e.com"},
 		Password: dto.Password{Password: "pass"},
 	})
 	token, _ := jwt.SignUserToken(u.ID)
@@ -178,8 +178,8 @@ func TestUsersRouter_UpdateUser_Failures(t *testing.T) {
 
 	// 1. Update Profile Duplicate
 	// Create another user
-	svc.CreateUser(context.Background(), &dto.CreateUserRequest{
-		User: dto.User{UserName: dto.UserName{Username: "u2"}, Email: "u2@e.com"},
+	_, _ = svc.CreateUser(context.Background(), &dto.CreateUserRequest{
+		User:     dto.User{UserName: dto.UserName{Username: "u2"}, Email: "u2@e.com"},
 		Password: dto.Password{Password: "pass"},
 	})
 
@@ -218,11 +218,11 @@ func TestUsersRouter_Friends_Failures(t *testing.T) {
 
 	svc := service.NewUserService(model.DB)
 	u1, _ := svc.CreateUser(context.Background(), &dto.CreateUserRequest{
-		User: dto.User{UserName: dto.UserName{Username: "f1"}, Email: "f1@e.com"},
+		User:     dto.User{UserName: dto.UserName{Username: "f1"}, Email: "f1@e.com"},
 		Password: dto.Password{Password: "pass"},
 	})
 	u2, _ := svc.CreateUser(context.Background(), &dto.CreateUserRequest{
-		User: dto.User{UserName: dto.UserName{Username: "f2"}, Email: "f2@e.com"},
+		User:     dto.User{UserName: dto.UserName{Username: "f2"}, Email: "f2@e.com"},
 		Password: dto.Password{Password: "pass"},
 	})
 	token, _ := jwt.SignUserToken(u1.ID)
@@ -253,8 +253,8 @@ func TestUsersRouter_Friends_Failures(t *testing.T) {
 	}
 
 	// 3. Duplicate Friend
-	svc.AddNewFriend(context.Background(), u1.ID, &dto.AddNewFriendRequest{UserID: u2.ID})
-	
+	_ = svc.AddNewFriend(context.Background(), u1.ID, &dto.AddNewFriendRequest{UserID: u2.ID})
+
 	// Let DB settle
 	time.Sleep(200 * time.Millisecond)
 
@@ -276,7 +276,7 @@ func TestUsersRouter_2FA_Failures(t *testing.T) {
 
 	svc := service.NewUserService(model.DB)
 	u, _ := svc.CreateUser(context.Background(), &dto.CreateUserRequest{
-		User: dto.User{UserName: dto.UserName{Username: "2fafail"}, Email: "2fafail@e.com"},
+		User:     dto.User{UserName: dto.UserName{Username: "2fafail"}, Email: "2fafail@e.com"},
 		Password: dto.Password{Password: "pass"},
 	})
 	token, _ := jwt.SignUserToken(u.ID)
@@ -302,7 +302,7 @@ func TestUsersRouter_2FA_Failures(t *testing.T) {
 	// Enable it correctly first
 	code, _ := totp.GenerateCode(setupResp.TwoFASecret, time.Now())
 	confirmRes, _ := svc.ConfirmTwoFaSetup(context.Background(), u.ID, &dto.TwoFAConfirmRequest{SetupToken: setupResp.SetupToken, TwoFACode: code})
-	
+
 	// Update token as confirming 2FA issues a new one
 	token = confirmRes.Token
 
@@ -343,7 +343,7 @@ func TestUsersRouter_GoogleOAuth_Failures(t *testing.T) {
 	// We mocked service vars in other test file, but here they are originals unless we mock them again.
 	// Since setupUsersRouterTestFailure is separate, vars are global in `service` package.
 	// We should mock them to RETURN ERROR.
-	
+
 	origExchange := service.ExchangeCodeForTokens
 	defer func() { service.ExchangeCodeForTokens = origExchange }()
 	service.ExchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
@@ -354,7 +354,7 @@ func TestUsersRouter_GoogleOAuth_Failures(t *testing.T) {
 	req = httptest.NewRequest(http.MethodGet, "/users/google/callback?code=c&state="+state, nil)
 	resp = httptest.NewRecorder()
 	router.ServeHTTP(resp, req)
-	
+
 	if resp.Code != http.StatusFound { // Redirect to error page
 		t.Errorf("expected 302 redirect to error, got %d", resp.Code)
 	}

@@ -371,7 +371,7 @@ func (h *UserHandler) GetLoggedUsersFriendsHandler(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param body body dto.AddNewFriendRequest true "Add friend payload"
-// @Success 201 nil
+// @Success 201 {object} nil
 // @Router /friends [post]
 func (h *UserHandler) AddFriendHandler(c *gin.Context) {
 	userID, err := h.validateToken(c)

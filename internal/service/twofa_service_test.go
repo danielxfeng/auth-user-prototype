@@ -18,7 +18,7 @@ func TestTwoFASetupAndConfirm(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "u1"}, Email: "u1@e.com"},
+			User:     dto.User{UserName: dto.UserName{Username: "u1"}, Email: "u1@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
 
@@ -35,10 +35,10 @@ func TestTwoFASetupAndConfirm(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "u2"}, Email: "u2@e.com"},
+			User:     dto.User{UserName: dto.UserName{Username: "u2"}, Email: "u2@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
-		
+
 		resp, _ := svc.StartTwoFaSetup(ctx, u.ID)
 		code, err := totp.GenerateCode(resp.TwoFASecret, time.Now())
 		if err != nil {
@@ -63,12 +63,12 @@ func TestTwoFASetupAndConfirm(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "u3"}, Email: "u3@e.com"},
+			User:     dto.User{UserName: dto.UserName{Username: "u3"}, Email: "u3@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
 		resp, _ := svc.StartTwoFaSetup(ctx, u.ID)
 		code, _ := totp.GenerateCode(resp.TwoFASecret, time.Now())
-		svc.ConfirmTwoFaSetup(ctx, u.ID, &dto.TwoFAConfirmRequest{
+		_, _ = svc.ConfirmTwoFaSetup(ctx, u.ID, &dto.TwoFAConfirmRequest{
 			SetupToken: resp.SetupToken,
 			TwoFACode:  code,
 		})
@@ -88,7 +88,7 @@ func TestTwoFASetupAndConfirm(t *testing.T) {
 		svc := NewUserService(db)
 		// Mock OAuth user
 		oauthUser := dto.GoogleUserData{
-			ID: "oauth123",
+			ID:    "oauth123",
 			Email: "oauth@test.com",
 		}
 		user, err := svc.createNewUserFromGoogleInfo(ctx, &oauthUser, false)
@@ -110,12 +110,12 @@ func TestTwoFASetupAndConfirm(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "u4"}, Email: "u4@e.com"},
+			User:     dto.User{UserName: dto.UserName{Username: "u4"}, Email: "u4@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
-		
+
 		sqlDB, _ := db.DB()
-		sqlDB.Close()
+		_ = sqlDB.Close()
 		_, err := svc.StartTwoFaSetup(ctx, u.ID)
 		if err == nil {
 			t.Error("expected error on closed db")
@@ -129,7 +129,7 @@ func TestConfirmTwoFaSetup_Errors(t *testing.T) {
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
-		User: dto.User{UserName: dto.UserName{Username: "c"}, Email: "c@e.com"},
+		User:     dto.User{UserName: dto.UserName{Username: "c"}, Email: "c@e.com"},
 		Password: dto.Password{Password: "p"},
 	})
 	resp, _ := svc.StartTwoFaSetup(ctx, u.ID)
@@ -149,11 +149,11 @@ func TestConfirmTwoFaSetup_Errors(t *testing.T) {
 	t.Run("UserMismatch", func(t *testing.T) {
 		// Create setup token for another user
 		u2, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "c2"}, Email: "c2@e.com"},
+			User:     dto.User{UserName: dto.UserName{Username: "c2"}, Email: "c2@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
 		resp2, _ := svc.StartTwoFaSetup(ctx, u2.ID)
-		
+
 		req := &dto.TwoFAConfirmRequest{
 			SetupToken: resp2.SetupToken,
 			TwoFACode:  code,
@@ -183,7 +183,7 @@ func TestConfirmTwoFaSetup_Errors(t *testing.T) {
 		}
 
 		sqlDB, _ := db.DB()
-		sqlDB.Close()
+		_ = sqlDB.Close()
 
 		_, err := svc.ConfirmTwoFaSetup(ctx, u.ID, req)
 		if err == nil {
@@ -196,10 +196,10 @@ func TestConfirmTwoFaSetup_Errors(t *testing.T) {
 		svc := NewUserService(db)
 		// User with no 2FA token
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "ni"}, Email: "ni@e.com"},
+			User:     dto.User{UserName: dto.UserName{Username: "ni"}, Email: "ni@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
-		
+
 		// Create a valid setup token manually
 		setupToken, _ := jwt.SignTwoFASetupToken(u.ID, "secret")
 		code, _ := totp.GenerateCode("secret", time.Now())
@@ -223,13 +223,13 @@ func TestTwoFAChallenge(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "ch1"}, Email: "ch1@e.com"},
+			User:     dto.User{UserName: dto.UserName{Username: "ch1"}, Email: "ch1@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
 		setupResp, _ := svc.StartTwoFaSetup(ctx, u.ID)
 		code, _ := totp.GenerateCode(setupResp.TwoFASecret, time.Now())
-		svc.ConfirmTwoFaSetup(ctx, u.ID, &dto.TwoFAConfirmRequest{SetupToken: setupResp.SetupToken, TwoFACode: code})
-		
+		_, _ = svc.ConfirmTwoFaSetup(ctx, u.ID, &dto.TwoFAConfirmRequest{SetupToken: setupResp.SetupToken, TwoFACode: code})
+
 		loginResp, _ := svc.LoginUser(ctx, &dto.LoginUserRequest{
 			Identifier: dto.Identifier{Identifier: "ch1"},
 			Password:   dto.Password{Password: "p"},
@@ -255,13 +255,13 @@ func TestTwoFAChallenge(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "ch2"}, Email: "ch2@e.com"},
+			User:     dto.User{UserName: dto.UserName{Username: "ch2"}, Email: "ch2@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
 		setupResp, _ := svc.StartTwoFaSetup(ctx, u.ID)
 		code, _ := totp.GenerateCode(setupResp.TwoFASecret, time.Now())
-		svc.ConfirmTwoFaSetup(ctx, u.ID, &dto.TwoFAConfirmRequest{SetupToken: setupResp.SetupToken, TwoFACode: code})
-		
+		_, _ = svc.ConfirmTwoFaSetup(ctx, u.ID, &dto.TwoFAConfirmRequest{SetupToken: setupResp.SetupToken, TwoFACode: code})
+
 		loginResp, _ := svc.LoginUser(ctx, &dto.LoginUserRequest{
 			Identifier: dto.Identifier{Identifier: "ch2"},
 			Password:   dto.Password{Password: "p"},
@@ -283,11 +283,11 @@ func TestTwoFAChallenge(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "chne"}, Email: "chne@e.com"},
+			User:     dto.User{UserName: dto.UserName{Username: "chne"}, Email: "chne@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
 		// Do NOT enable 2FA
-		
+
 		// Create session token manually
 		sessionToken, _ := jwt.SignTwoFAToken(u.ID)
 
@@ -306,13 +306,13 @@ func TestTwoFAChallenge(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "ch3"}, Email: "ch3@e.com"},
+			User:     dto.User{UserName: dto.UserName{Username: "ch3"}, Email: "ch3@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
 		setupResp, _ := svc.StartTwoFaSetup(ctx, u.ID)
 		code, _ := totp.GenerateCode(setupResp.TwoFASecret, time.Now())
-		svc.ConfirmTwoFaSetup(ctx, u.ID, &dto.TwoFAConfirmRequest{SetupToken: setupResp.SetupToken, TwoFACode: code})
-		
+		_, _ = svc.ConfirmTwoFaSetup(ctx, u.ID, &dto.TwoFAConfirmRequest{SetupToken: setupResp.SetupToken, TwoFACode: code})
+
 		loginResp, _ := svc.LoginUser(ctx, &dto.LoginUserRequest{
 			Identifier: dto.Identifier{Identifier: "ch3"},
 			Password:   dto.Password{Password: "p"},
@@ -325,7 +325,7 @@ func TestTwoFAChallenge(t *testing.T) {
 		}
 
 		sqlDB, _ := db.DB()
-		sqlDB.Close()
+		_ = sqlDB.Close()
 		_, err := svc.SubmitTwoFAChallenge(ctx, req)
 		if err == nil {
 			t.Error("expected error on closed db")
@@ -340,13 +340,12 @@ func TestDisableTwoFA(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "dis1"}, Email: "dis1@e.com"},
+			User:     dto.User{UserName: dto.UserName{Username: "dis1"}, Email: "dis1@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
 		setupResp, _ := svc.StartTwoFaSetup(ctx, u.ID)
 		code, _ := totp.GenerateCode(setupResp.TwoFASecret, time.Now())
-		svc.ConfirmTwoFaSetup(ctx, u.ID, &dto.TwoFAConfirmRequest{SetupToken: setupResp.SetupToken, TwoFACode: code})
-
+		_, _ = svc.ConfirmTwoFaSetup(ctx, u.ID, &dto.TwoFAConfirmRequest{SetupToken: setupResp.SetupToken, TwoFACode: code})
 		req := &dto.DisableTwoFARequest{
 			Password: dto.Password{Password: "p"},
 		}
@@ -364,7 +363,7 @@ func TestDisableTwoFA(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "dis2"}, Email: "dis2@e.com"},
+			User:     dto.User{UserName: dto.UserName{Username: "dis2"}, Email: "dis2@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
 
@@ -382,7 +381,7 @@ func TestDisableTwoFA(t *testing.T) {
 		svc := NewUserService(db)
 		// Mock OAuth user
 		oauthUser := dto.GoogleUserData{
-			ID: "oauth456",
+			ID:    "oauth456",
 			Email: "oauth2@test.com",
 		}
 		user, _ := svc.createNewUserFromGoogleInfo(ctx, &oauthUser, false)
@@ -404,13 +403,13 @@ func TestDisableTwoFA(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "dis3"}, Email: "dis3@e.com"},
+			User:     dto.User{UserName: dto.UserName{Username: "dis3"}, Email: "dis3@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
-		
+
 		sqlDB, _ := db.DB()
-		sqlDB.Close()
-		
+		_ = sqlDB.Close()
+
 		req := &dto.DisableTwoFARequest{
 			Password: dto.Password{Password: "p"},
 		}
@@ -419,20 +418,19 @@ func TestDisableTwoFA(t *testing.T) {
 			t.Error("expected error on closed db")
 		}
 	})
-	
+
 	t.Run("InvalidPassword", func(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "disinv"}, Email: "disinv@e.com"},
+			User:     dto.User{UserName: dto.UserName{Username: "disinv"}, Email: "disinv@e.com"},
 			Password: dto.Password{Password: "correct"},
 		})
-		
+
 		// Enable 2FA manually
 		setupResp, _ := svc.StartTwoFaSetup(ctx, u.ID)
 		code, _ := totp.GenerateCode(setupResp.TwoFASecret, time.Now())
-		svc.ConfirmTwoFaSetup(ctx, u.ID, &dto.TwoFAConfirmRequest{SetupToken: setupResp.SetupToken, TwoFACode: code})
-
+		_, _ = svc.ConfirmTwoFaSetup(ctx, u.ID, &dto.TwoFAConfirmRequest{SetupToken: setupResp.SetupToken, TwoFACode: code})
 		req := &dto.DisableTwoFARequest{
 			Password: dto.Password{Password: "wrong"},
 		}

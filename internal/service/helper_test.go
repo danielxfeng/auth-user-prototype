@@ -15,7 +15,7 @@ func TestHelperFunctions(t *testing.T) {
 		if isTwoFAEnabled(&token) {
 			t.Error("expected false for pre- prefix")
 		}
-		
+
 		token = "secret"
 		if !isTwoFAEnabled(&token) {
 			t.Error("expected true for valid secret")
@@ -34,7 +34,7 @@ func TestHelperFunctions(t *testing.T) {
 	t.Run("userToUserWithTokenResponse", func(t *testing.T) {
 		token := "secret"
 		user := &model.User{
-			Username: "u",
+			Username:   "u",
 			TwoFAToken: &token,
 		}
 		resp := userToUserWithTokenResponse(user, "jwt")
@@ -58,23 +58,23 @@ func TestHelperFunctions(t *testing.T) {
 			t.Error("expected 2 offline")
 		}
 	})
-	
+
 	t.Run("UpdateHeartBeat", func(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
-		
+
 		// Create user first to satisfy FK
-		svc.CreateUser(context.Background(), &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "hb"}, Email: "hb@e.com"},
+		_, _ = svc.CreateUser(context.Background(), &dto.CreateUserRequest{
+			User:     dto.User{UserName: dto.UserName{Username: "hb"}, Email: "hb@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
 
 		// Create heartbeat entry
 		svc.updateHeartBeat(1)
-		
+
 		// Wait for goroutine
 		time.Sleep(100 * time.Millisecond)
-		
+
 		var hb model.HeartBeat
 		if err := db.Where("user_id = ?", 1).First(&hb).Error; err != nil {
 			t.Fatalf("expected heartbeat created: %v", err)
@@ -84,10 +84,10 @@ func TestHelperFunctions(t *testing.T) {
 	t.Run("IssueNewTokenForUser", func(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
-		
+
 		// Create user first
-		svc.CreateUser(context.Background(), &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "issue"}, Email: "issue@e.com"},
+		_, _ = svc.CreateUser(context.Background(), &dto.CreateUserRequest{
+			User:     dto.User{UserName: dto.UserName{Username: "issue"}, Email: "issue@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
 
@@ -98,25 +98,25 @@ func TestHelperFunctions(t *testing.T) {
 		if token == "" {
 			t.Error("expected token")
 		}
-		
+
 		// Allow async heartbeat to finish
 		time.Sleep(200 * time.Millisecond)
 
 		// Revoke old tokens
-		svc.issueNewTokenForUser(context.Background(), 1, true)
+		_, _ = svc.issueNewTokenForUser(context.Background(), 1, true)
 		var count int64
 		db.Model(&model.Token{}).Where("user_id = ?", 1).Count(&count)
 		if count != 1 {
 			t.Errorf("expected 1 token, got %d", count)
 		}
 	})
-	
+
 	t.Run("IssueNewTokenForUser_DBError", func(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
 		sqlDB, _ := db.DB()
-		sqlDB.Close()
-		
+		_ = sqlDB.Close()
+
 		_, err := svc.issueNewTokenForUser(context.Background(), 1, true)
 		if err == nil {
 			t.Error("expected error on closed db")
