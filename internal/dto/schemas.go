@@ -163,9 +163,9 @@ type User struct {
 }
 
 type SimpleUser struct {
-	UserName
-	ID     uint    `json:"id"`
-	Avatar *string `json:"avatar" validate:"omitempty,url"`
+	ID       uint    `json:"id"`
+	Username string  `json:"username"`
+	Avatar   *string `json:"avatar"`
 }
 
 type CreateUserRequest struct {
@@ -191,23 +191,25 @@ type UsernameRequest struct {
 	UserName
 }
 
-type ResponseAdditionalInfo struct {
+type UserWithTokenResponse struct {
 	ID            uint    `json:"id"`
-	TwoFA         bool    `json:"twoFa"`
+	Username      string  `json:"username"`
 	Email         string  `json:"email"`
+	Avatar        *string `json:"avatar"`
+	TwoFA         bool    `json:"twoFa"`
 	GoogleOauthId *string `json:"googleOauthId,omitempty"`
 	CreatedAt     int64   `json:"createdAt"`
-}
-
-type UserWithTokenResponse struct {
-	UserName
-	ResponseAdditionalInfo
-	Token string `json:"token"`
+	Token         string  `json:"token"`
 }
 
 type UserWithoutTokenResponse struct {
-	UserName
-	ResponseAdditionalInfo
+	ID            uint    `json:"id"`
+	Username      string  `json:"username"`
+	Email         string  `json:"email"`
+	Avatar        *string `json:"avatar"`
+	TwoFA         bool    `json:"twoFa"`
+	GoogleOauthId *string `json:"googleOauthId,omitempty"`
+	CreatedAt     int64   `json:"createdAt"`
 }
 
 type UsersResponse struct {
@@ -241,9 +243,7 @@ type TwoFASetupResponse struct {
 
 type TwoFAPendingUserResponse struct {
 	Message      string `json:"message"`
-	TwoFASecret  string `json:"twoFaSecret" validate:"required"`
-	SessionToken string `json:"sessionToken" validate:"required"`
-	TwoFAUrl     string `json:"twoFaUrl" validate:"required"`
+	SessionToken string `json:"sessionToken"`
 }
 
 type AddNewFriendRequest struct {
@@ -269,10 +269,25 @@ type GoogleOauthCallback struct {
 }
 
 type GoogleUserData struct {
-	GoogleOauthId string  `json:"googleOauthId"`
+	ID            string  `json:"id"`
 	Email         string  `json:"email"`
 	Name          string  `json:"name"`
 	Picture       *string `json:"picture"`
+}
+
+type GoogleJwtPayload struct {
+		AccessToken  string `json:"access_token"`
+		IdToken      string `json:"id_token"`
+		RefreshToken string `json:"refresh_token"`
+		ExpiresIn    int    `json:"expires_in"`
+		TokenType    string `json:"token_type"`
+}
+
+type GoogleClaims struct {
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"email_verified"`
+	Name          string `json:"name"`
+	Picture       string `json:"picture"`
 }
 
 type UserJwtPayload struct {
@@ -287,14 +302,14 @@ type OauthStateJwtPayload struct {
 }
 
 type TwoFaSetupJwtPayload struct {
-	UserID int    `json:"userId"`
+	UserID uint    `json:"userId"`
 	Secret string `json:"secret"`
 	Type   string `json:"type"` // must be "2FA_SETUP"
 	jwt.RegisteredClaims
 }
 
 type TwoFaJwtPayload struct {
-	UserID int    `json:"userId"`
+	UserID uint    `json:"userId"`
 	Type   string `json:"type"` // must be "2FA"
 	jwt.RegisteredClaims
 }

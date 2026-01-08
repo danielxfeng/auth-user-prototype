@@ -56,7 +56,7 @@ func SignOauthStateToken() (string, error) {
 	return signedToken, nil
 }
 
-func SignTwoFASetupToken(userID int, secret string) (string, error) {
+func SignTwoFASetupToken(userID uint, secret string) (string, error) {
 	claims := dto.TwoFaSetupJwtPayload{
 		UserID:           userID,
 		Secret:           secret,
@@ -73,7 +73,7 @@ func SignTwoFASetupToken(userID int, secret string) (string, error) {
 	return signedToken, nil
 }
 
-func SignTwoFAToken(userID int) (string, error) {
+func SignTwoFAToken(userID uint) (string, error) {
 	claims := dto.TwoFaJwtPayload{
 		UserID:           userID,
 		Type:             TwoFATokenType,

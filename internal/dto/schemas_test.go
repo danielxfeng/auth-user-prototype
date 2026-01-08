@@ -47,18 +47,11 @@ func TestTwoFAChallengeRequiresNumericOTP(t *testing.T) {
 func TestTwoFAPendingUserResponseRequiresTaggedFields(t *testing.T) {
 	payload := dto.TwoFAPendingUserResponse{
 		Message:      "ANY_VALUE",
-		TwoFASecret:  "secret",
 		SessionToken: "session-token",
-		TwoFAUrl:     "custom://value",
 	}
 
 	if err := dto.Validate.Struct(&payload); err != nil {
 		t.Fatalf("expected arbitrary message/twoFaUrl to be accepted, got error: %v", err)
-	}
-
-	payload.TwoFASecret = ""
-	if err := dto.Validate.Struct(&payload); err == nil {
-		t.Fatalf("expected required fields to be enforced when empty")
 	}
 }
 

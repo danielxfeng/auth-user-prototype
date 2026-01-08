@@ -3,6 +3,7 @@ package routers
 import (
 	"github.com/gin-gonic/gin"
 
+	"github.com/paularynty/transcendence/auth-service-go/internal/db"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 	"github.com/paularynty/transcendence/auth-service-go/internal/handler"
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
@@ -10,7 +11,7 @@ import (
 )
 
 func UsersRouter(r *gin.RouterGroup) {
-	h := &handler.UserHandler{S: service.NewUserService()}
+	h := &handler.UserHandler{Service: service.NewUserService(db.DB)}
 
 	// Public endpoints
 	r.POST("/", middleware.ValidateBody[dto.CreateUserRequest](), h.CreateUserHandler)
@@ -34,9 +35,7 @@ func UsersRouter(r *gin.RouterGroup) {
 
 	auth.GET("/friends", h.GetLoggedUsersFriendsHandler)
 	auth.POST("/friends", middleware.ValidateBody[dto.AddNewFriendRequest](), h.AddFriendHandler)
-	auth.DELETE("/friends/:userId", h.RemoveFriendHandler)
 
 	auth.GET("/validate", h.ValidateUserHandler)
 	auth.GET("/", h.GetUsersWithLimitedInfoHandler)
-	auth.GET("/:username", h.GetUserLimitedInfoByUsernameHandler)
 }

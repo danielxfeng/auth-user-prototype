@@ -9,9 +9,9 @@ type User struct {
 
 	Username      string `gorm:"uniqueIndex;not null"`
 	Email         string `gorm:"uniqueIndex;not null"`
-	PasswordHash  string
+	PasswordHash  *string
 	Avatar        *string
-	GoogleOauthID *string
+	GoogleOauthID *string `gorm:"uniqueIndex"`
 	TwoFAToken    *string
 }
 
