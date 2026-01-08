@@ -82,8 +82,8 @@ func userToSimpleUser(user *model.User) *dto.SimpleUser {
 }
 
 func (s *UserService) UpdateHeartBeat(userID uint) {
-	go func () {
-		ctx, cancel := context.WithTimeout(context.Background(), 2 * time.Second)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 
 		err := gorm.G[model.HeartBeat](s.DB).Create(ctx, &model.HeartBeat{
@@ -97,7 +97,7 @@ func (s *UserService) UpdateHeartBeat(userID uint) {
 }
 
 func (s *UserService) issueNewTokenForUser(ctx context.Context, userID uint, revokeAllTokens bool) (string, error) {
-	
+
 	if revokeAllTokens {
 		_, err := gorm.G[model.Token](s.DB).Where("user_id = ?", userID).Delete(ctx)
 		if err != nil {
@@ -119,7 +119,7 @@ func (s *UserService) issueNewTokenForUser(ctx context.Context, userID uint, rev
 	}
 
 	s.UpdateHeartBeat(userID)
-	
+
 	return token, nil
 }
 
@@ -141,7 +141,7 @@ func validateAvatarURL(avatar *string, maxSize int) bool {
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return false
@@ -164,7 +164,6 @@ func validateAvatarURL(avatar *string, maxSize int) bool {
 
 	return true
 }
-
 
 func (s *UserService) CreateUser(ctx context.Context, request *dto.CreateUserRequest) (*dto.UserWithoutTokenResponse, error) {
 
@@ -200,8 +199,8 @@ func (s *UserService) CreateUser(ctx context.Context, request *dto.CreateUserReq
 }
 
 type LoginResult struct {
-	User          *dto.UserWithTokenResponse
-	TwoFAPending  *dto.TwoFAPendingUserResponse
+	User         *dto.UserWithTokenResponse
+	TwoFAPending *dto.TwoFAPendingUserResponse
 }
 
 func (s *UserService) LoginUser(ctx context.Context, request *dto.LoginUserRequest) (*LoginResult, error) {
@@ -213,7 +212,7 @@ func (s *UserService) LoginUser(ctx context.Context, request *dto.LoginUserReque
 		identifierField = "username"
 	}
 
-	modelUser, err := gorm.G[model.User](s.DB).Where(identifierField + " = ?", request.Identifier.Identifier).First(ctx)
+	modelUser, err := gorm.G[model.User](s.DB).Where(identifierField+" = ?", request.Identifier.Identifier).First(ctx)
 	if err != nil || modelUser.PasswordHash == nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, middleware.NewAuthError(401, "invalid credentials")
@@ -235,10 +234,10 @@ func (s *UserService) LoginUser(ctx context.Context, request *dto.LoginUserReque
 		if err != nil {
 			return nil, err
 		}
-		
+
 		return &LoginResult{
 			TwoFAPending: &dto.TwoFAPendingUserResponse{
-				Message: "2FA_REQUIRED",
+				Message:      "2FA_REQUIRED",
 				SessionToken: sessionToken,
 			},
 		}, nil
@@ -275,7 +274,7 @@ func (s *UserService) UpdateUserPassword(ctx context.Context, userID uint, reque
 		return nil, err
 	}
 
-	if (modelUser.PasswordHash == nil) {
+	if modelUser.PasswordHash == nil {
 		return nil, middleware.NewAuthError(400, "password cannot be changed for OAuth users")
 	}
 
@@ -295,7 +294,7 @@ func (s *UserService) UpdateUserPassword(ctx context.Context, userID uint, reque
 	_, err = gorm.G[model.User](s.DB).Where("id = ?", userID).Update(ctx, "password_hash", string(newPasswordBytes))
 	if err != nil {
 		return nil, err
-	}	
+	}
 
 	userToken, err := s.issueNewTokenForUser(ctx, userID, true)
 	if err != nil {
@@ -323,7 +322,7 @@ func (s *UserService) UpdateUserProfile(ctx context.Context, userID uint, reques
 	modelUser.Email = request.Email
 
 	err = s.DB.WithContext(ctx).Save(&modelUser).Error
-	
+
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return nil, middleware.NewAuthError(409, "username or email already in use")
@@ -373,7 +372,7 @@ func (s *UserService) StartTwoFaSetup(ctx context.Context, userID uint) (*dto.Tw
 
 	if modelUser.GoogleOauthID != nil {
 		return nil, middleware.NewAuthError(400, "2FA cannot be enabled for Google OAuth users")
-	} 
+	}
 
 	secret, err := totp.Generate(totp.GenerateOpts{
 		Issuer:      "Transcendence",
@@ -397,7 +396,7 @@ func (s *UserService) StartTwoFaSetup(ctx context.Context, userID uint) (*dto.Tw
 
 	return &dto.TwoFASetupResponse{
 		TwoFASecret: secret.Secret(),
-		SetupToken: setupToken,
+		SetupToken:  setupToken,
 	}, nil
 }
 
@@ -573,7 +572,7 @@ func (s *UserService) GetUserFriends(ctx context.Context, userID uint) (*dto.Fri
 	for _, f := range friends {
 		friendResponses = append(friendResponses, dto.FriendResponse{
 			SimpleUser: *userToSimpleUser(&f.Friend),
-			Online: checker.isOnline(f.FriendID),
+			Online:     checker.isOnline(f.FriendID),
 		})
 	}
 
@@ -583,7 +582,7 @@ func (s *UserService) GetUserFriends(ctx context.Context, userID uint) (*dto.Fri
 }
 
 func (s *UserService) AddNewFriend(ctx context.Context, userID uint, request *dto.AddNewFriendRequest) error {
-	
+
 	if userID == request.UserID {
 		return middleware.NewAuthError(400, "cannot add yourself as a friend")
 	}
@@ -610,13 +609,13 @@ func (s *UserService) AddNewFriend(ctx context.Context, userID uint, request *dt
 func (s *UserService) GetGoogleOAuthURL(ctx context.Context) (string, error) {
 	state, err := jwt.SignOauthStateToken()
 	if err != nil {
-		util.Logger.Error("failed to sign oauth state token:", err)
+		util.Logger.Error("failed to sign oauth state token:", "err", err)
 		return "", err
 	}
 
 	u, err := url.Parse(BaseGoogleOAuthURL)
 	if err != nil {
-		util.Logger.Error("failed to parse google oauth base url:", err)
+		util.Logger.Error("failed to parse google oauth base url:", "err", err)
 		return "", err
 	}
 
@@ -635,7 +634,7 @@ func (s *UserService) GetGoogleOAuthURL(ctx context.Context) (string, error) {
 func assembleFrontendRedirectURL(token *string, errMsg *string) string {
 	u, err := url.Parse(config.Cfg.FrontendUrl + "/oauth/callback")
 	if err != nil {
-		util.Logger.Error("failed to parse frontend redirect url:", err)
+		util.Logger.Error("failed to parse frontend redirect url:", "err", err)
 		return "/unrecovered-error"
 	}
 
@@ -673,7 +672,7 @@ func (s *UserService) exchangeCodeForTokens(ctx context.Context, code string) (*
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New("failed to exchange code for tokens")
@@ -690,7 +689,7 @@ func (s *UserService) exchangeCodeForTokens(ctx context.Context, code string) (*
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return payload, nil
 }
 
@@ -725,7 +724,7 @@ func fetchGoogleUserInfo(payload *idtoken.Payload) (*dto.GoogleUserData, error) 
 }
 
 func (s *UserService) linkGoogleAccountToExistingUser(ctx context.Context, modelUser *model.User, googleUserInfo *dto.GoogleUserData) error {
-	
+
 	// Should not be here.
 	if modelUser.Email != googleUserInfo.Email {
 		return middleware.NewAuthError(500, "email mismatch between existing account and Google account")
@@ -753,7 +752,7 @@ func (s *UserService) linkGoogleAccountToExistingUser(ctx context.Context, model
 }
 
 func (s *UserService) createNewUserFromGoogleInfo(ctx context.Context, googleUserInfo *dto.GoogleUserData, isRetry bool) (*model.User, error) {
-	
+
 	username := ""
 
 	if isRetry {
@@ -765,7 +764,7 @@ func (s *UserService) createNewUserFromGoogleInfo(ctx context.Context, googleUse
 	} else {
 		username = "google_" + googleUserInfo.ID
 	}
-	
+
 	modelUser := model.User{
 		Username:      username,
 		Email:         googleUserInfo.Email,
@@ -780,7 +779,7 @@ func (s *UserService) createNewUserFromGoogleInfo(ctx context.Context, googleUse
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			if !isRetry {
 				return s.createNewUserFromGoogleInfo(ctx, googleUserInfo, true)
-			}			
+			}
 			return nil, middleware.NewAuthError(409, "username or email already in use")
 		}
 		return nil, err
@@ -796,7 +795,7 @@ func HandleGoogleOAuthCallbackError(err error, errMsg string) string {
 }
 
 func (s *UserService) HandleGoogleOAuthCallback(ctx context.Context, code string, state string) string {
-	var finalUserID *uint = nil
+	var finalUserID uint
 
 	claims, err := jwt.ValidateOauthStateToken(state)
 	if err != nil || claims.Type != jwt.GoogleOAuthStateType {
@@ -815,20 +814,20 @@ func (s *UserService) HandleGoogleOAuthCallback(ctx context.Context, code string
 
 	modelUser, err := gorm.G[model.User](s.DB).Where("google_oauth_id = ?", googleUserInfo.ID).First(ctx)
 	if err == nil { // User with this Google OAuth ID exists, log them in
-		finalUserID = &modelUser.ID
+		finalUserID = modelUser.ID
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return HandleGoogleOAuthCallbackError(err, "failed to query user by google oauth id")
 	} else {
 		// No user with this Google OAuth ID, check if a user with this email exists
 		modelUser, err = gorm.G[model.User](s.DB).Where("email = ?", googleUserInfo.Email).First(ctx)
 		if err == nil { // User with this email exists, link Google account
-			
+
 			err = s.linkGoogleAccountToExistingUser(ctx, &modelUser, googleUserInfo)
 			if err != nil { // Failed to link Google account
 				return HandleGoogleOAuthCallbackError(err, "failed to link google account to existing user")
 			}
 			// Successfully linked Google account
-			finalUserID = &modelUser.ID
+			finalUserID = modelUser.ID
 		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return HandleGoogleOAuthCallbackError(err, "failed to query user by email")
 		} else {
@@ -838,15 +837,15 @@ func (s *UserService) HandleGoogleOAuthCallback(ctx context.Context, code string
 				return HandleGoogleOAuthCallbackError(err, "failed to create new user from google info")
 			}
 
-			finalUserID = &newUser.ID
+			finalUserID = newUser.ID
 		}
 	}
 
-	if finalUserID == nil {
-		return HandleGoogleOAuthCallbackError(errors.New("finalUserID is nil"), "internal error determining final user ID")
+	if finalUserID == 0 {
+		return HandleGoogleOAuthCallbackError(errors.New("finalUserID is zero"), "internal error determining final user ID")
 	}
 
-	userToken, err := s.issueNewTokenForUser(ctx, *finalUserID, false)
+	userToken, err := s.issueNewTokenForUser(ctx, finalUserID, false)
 	if err != nil {
 		return HandleGoogleOAuthCallbackError(err, "failed to issue new token for user")
 	}
