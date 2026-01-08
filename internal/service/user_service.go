@@ -214,3 +214,29 @@ func (s *UserService) DeleteUser(ctx context.Context, userID uint) error {
 
 	return nil
 }
+
+func (s *UserService) LogoutUser(ctx context.Context, userID uint) error {
+	_, err := gorm.G[model.Token](s.DB).Where("user_id = ?", userID).Delete(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *UserService) ValidateUserToken(ctx context.Context, token string, userId uint) error {
+	modelToken, err := gorm.G[model.Token](s.DB).Where("token = ?", token).First(ctx)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return middleware.NewAuthError(401, "invalid token")
+		}
+		return err
+	}
+
+	if modelToken.UserID != userId {
+		return middleware.NewAuthError(401, "token does not match user")
+	}
+
+	s.updateHeartBeat(userId)
+	return nil
+}
