@@ -23,12 +23,12 @@ func InitValidator() {
 
 	Validate = validator.New()
 
-	enTranslations.RegisterDefaultTranslations(Validate, Trans)
+	_ = enTranslations.RegisterDefaultTranslations(Validate, Trans)
 
-	Validate.RegisterValidation("trim", trimValue) // SIDE EFFECT: trims the value
-	Validate.RegisterValidation("username", validateUsername)
-	Validate.RegisterValidation("password", validatePassword)
-	Validate.RegisterValidation("identifier", validateIdentifier)
+	_ = Validate.RegisterValidation("trim", trimValue) // SIDE EFFECT: trims the value
+	_ = Validate.RegisterValidation("username", validateUsername)
+	_ = Validate.RegisterValidation("password", validatePassword)
+	_ = Validate.RegisterValidation("identifier", validateIdentifier)
 	registerUsernameTranslation(Validate, Trans)
 	registerPasswordTranslation(Validate, Trans)
 	registerIdentifierTranslation(Validate, Trans)
@@ -60,7 +60,7 @@ func validateUsername(fl validator.FieldLevel) bool {
 }
 
 func registerUsernameTranslation(v *validator.Validate, trans ut.Translator) {
-	v.RegisterTranslation(
+	_ = v.RegisterTranslation(
 		"username",
 		trans,
 		func(ut ut.Translator) error {
@@ -101,7 +101,7 @@ func validatePassword(fl validator.FieldLevel) bool {
 }
 
 func registerPasswordTranslation(v *validator.Validate, trans ut.Translator) {
-	v.RegisterTranslation(
+	_ = v.RegisterTranslation(
 		"password",
 		trans,
 		func(ut ut.Translator) error {
@@ -137,7 +137,7 @@ func validateIdentifier(fl validator.FieldLevel) bool {
 }
 
 func registerIdentifierTranslation(v *validator.Validate, trans ut.Translator) {
-	v.RegisterTranslation(
+	_ = v.RegisterTranslation(
 		"identifier",
 		trans,
 		func(ut ut.Translator) error {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"os"
 
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -43,7 +44,10 @@ func SetupRouter(logger *slog.Logger) *gin.Engine {
 // @BasePath /api
 func main() {
 	// config
-	godotenv.Load()
+	if err := godotenv.Load(); err != nil {
+		util.Logger.Warn("no .env file found", "err", err)
+	}
+
 	config.LoadConfig()
 
 	// logger
@@ -67,5 +71,8 @@ func main() {
 	// Swagger
 	r.GET("/api/docs/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
-	r.Run(":3003")
+	if err := r.Run(":3003"); err != nil {
+		util.Logger.Error("failed to start server", "err", err)
+		os.Exit(1)
+	}
 }

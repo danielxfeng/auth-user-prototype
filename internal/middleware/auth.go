@@ -13,7 +13,7 @@ func Auth() gin.HandlerFunc {
 		authHeader := c.GetHeader("Authorization")
 
 		if authHeader == "" || len(authHeader) < len(PrefixBearer) || authHeader[:len(PrefixBearer)] != PrefixBearer {
-			c.AbortWithError(401, NewAuthError(401, "Invalid or expired token"))
+			_ = c.AbortWithError(401, NewAuthError(401, "Invalid or expired token"))
 			return
 		}
 
@@ -21,7 +21,7 @@ func Auth() gin.HandlerFunc {
 
 		userJwtPayload, err := jwt.ValidateUserTokenGeneric(tokenString)
 		if err != nil {
-			c.AbortWithError(401, NewAuthError(401, "Invalid or expired token"))
+			_ = c.AbortWithError(401, NewAuthError(401, "Invalid or expired token"))
 			return
 		}
 

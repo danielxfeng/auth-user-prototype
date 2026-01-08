@@ -19,7 +19,7 @@ func TestErrorHandlerReturnsAuthErrorPayload(t *testing.T) {
 	r := gin.New()
 	r.Use(middleware.ErrorHandler())
 	r.GET("/auth", func(c *gin.Context) {
-		c.AbortWithError(http.StatusUnauthorized, middleware.NewAuthError(http.StatusUnauthorized, "Invalid or expired token"))
+		_ = c.AbortWithError(http.StatusUnauthorized, middleware.NewAuthError(http.StatusUnauthorized, "Invalid or expired token"))
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/auth", nil)
@@ -46,7 +46,7 @@ func TestErrorHandlerDifferentErrors(t *testing.T) {
 	r := gin.New()
 	r.Use(middleware.ErrorHandler())
 	r.GET("/unknown", func(c *gin.Context) {
-		c.AbortWithError(http.StatusTeapot, errors.New("boom"))
+		_ = c.AbortWithError(http.StatusTeapot, errors.New("boom"))
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/unknown", nil)

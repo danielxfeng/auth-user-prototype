@@ -48,7 +48,7 @@ func TestSignAndValidateUserToken(t *testing.T) {
 		t.Fatalf("expected claim type %q, got %q", jwt.UserTokenType, claims.Type)
 	}
 
-	if claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) {
+	if claims.ExpiresAt == nil || claims.ExpiresAt.Before(time.Now()) {
 		t.Fatalf("expected future expiration, got %v", claims.ExpiresAt)
 	}
 }

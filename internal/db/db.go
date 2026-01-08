@@ -19,10 +19,17 @@ func ConnectDB(dbName string) {
 		panic("failed to connect to db: " + dbName)
 	}
 
-	DB.AutoMigrate(&User{})
-	DB.AutoMigrate(&Friend{})
-	DB.AutoMigrate(&Token{})
-	DB.AutoMigrate(&HeartBeat{})
+	for _, model := range []any{
+		&User{},
+		&Friend{},
+		&Token{},
+		&HeartBeat{},
+	} {
+		if err := DB.AutoMigrate(model); err != nil {
+			panic("failed to migrate model: " + err.Error())
+		}
+	}
+
 	util.Logger.Info("connected to db")
 }
 

@@ -29,7 +29,7 @@ func TestDevRouterResetDebugMode(t *testing.T) {
 		if db.DB != nil {
 			sqlDB, err := db.DB.DB()
 			if err == nil {
-				sqlDB.Close()
+				_ = sqlDB.Close()
 			}
 			db.DB = nil
 		}
