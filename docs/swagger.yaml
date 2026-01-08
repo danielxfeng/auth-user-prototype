@@ -1,0 +1,568 @@
+basePath: /api
+definitions:
+  dto.AddNewFriendRequest:
+    properties:
+      userId:
+        type: integer
+    required:
+    - userId
+    type: object
+  dto.CreateUserRequest:
+    properties:
+      avatar:
+        type: string
+      email:
+        maxLength: 100
+        type: string
+      password:
+        maxLength: 20
+        minLength: 3
+        type: string
+      username:
+        maxLength: 50
+        minLength: 3
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  dto.DisableTwoFARequest:
+    properties:
+      password:
+        maxLength: 20
+        minLength: 3
+        type: string
+    required:
+    - password
+    type: object
+  dto.FriendResponse:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: integer
+      online:
+        type: boolean
+      username:
+        maxLength: 50
+        minLength: 3
+        type: string
+    required:
+    - username
+    type: object
+  dto.FriendsResponse:
+    properties:
+      friends:
+        items:
+          $ref: '#/definitions/dto.FriendResponse'
+        type: array
+    type: object
+  dto.LoginUserRequest:
+    properties:
+      identifier:
+        description: username or email
+        maxLength: 100
+        minLength: 3
+        type: string
+      password:
+        maxLength: 20
+        minLength: 3
+        type: string
+    required:
+    - identifier
+    - password
+    type: object
+  dto.SimpleUser:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: integer
+      username:
+        maxLength: 50
+        minLength: 3
+        type: string
+    required:
+    - username
+    type: object
+  dto.TwoFAChallengeRequest:
+    properties:
+      sessionToken:
+        type: string
+      twoFaCode:
+        type: string
+    required:
+    - sessionToken
+    - twoFaCode
+    type: object
+  dto.TwoFAConfirmRequest:
+    properties:
+      setupToken:
+        type: string
+      twoFaCode:
+        type: string
+    required:
+    - setupToken
+    - twoFaCode
+    type: object
+  dto.TwoFAPendingUserResponse:
+    properties:
+      message:
+        type: string
+      sessionToken:
+        type: string
+      twoFaSecret:
+        type: string
+      twoFaUrl:
+        type: string
+    required:
+    - sessionToken
+    - twoFaSecret
+    - twoFaUrl
+    type: object
+  dto.TwoFASetupResponse:
+    properties:
+      setupToken:
+        type: string
+      twoFaSecret:
+        type: string
+    required:
+    - setupToken
+    - twoFaSecret
+    type: object
+  dto.UpdateUserPasswordRequest:
+    properties:
+      newPassword:
+        maxLength: 20
+        minLength: 3
+        type: string
+      oldPassword:
+        maxLength: 20
+        minLength: 3
+        type: string
+    required:
+    - newPassword
+    - oldPassword
+    type: object
+  dto.UpdateUserRequest:
+    properties:
+      avatar:
+        type: string
+      email:
+        maxLength: 100
+        type: string
+      username:
+        maxLength: 50
+        minLength: 3
+        type: string
+    required:
+    - email
+    - username
+    type: object
+  dto.UserValidationResponse:
+    properties:
+      userId:
+        type: integer
+    type: object
+  dto.UserWithTokenResponse:
+    properties:
+      createdAt:
+        type: integer
+      email:
+        type: string
+      googleOauthId:
+        type: string
+      id:
+        type: integer
+      token:
+        type: string
+      twoFa:
+        type: boolean
+      username:
+        maxLength: 50
+        minLength: 3
+        type: string
+    required:
+    - username
+    type: object
+  dto.UserWithoutTokenResponse:
+    properties:
+      createdAt:
+        type: integer
+      email:
+        type: string
+      googleOauthId:
+        type: string
+      id:
+        type: integer
+      twoFa:
+        type: boolean
+      username:
+        maxLength: 50
+        minLength: 3
+        type: string
+    required:
+    - username
+    type: object
+  dto.UsersResponse:
+    properties:
+      users:
+        items:
+          $ref: '#/definitions/dto.SimpleUser'
+        type: array
+    type: object
+info:
+  contact: {}
+  description: Auth service for Transcendence
+  title: Auth Service API
+  version: "1.0"
+paths:
+  /:
+    get:
+      description: Returns a list of users with limited fields
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UsersResponse'
+      security:
+      - BearerAuth: []
+      summary: List users (limited info)
+      tags:
+      - auth/user
+    post:
+      consumes:
+      - application/json
+      description: Register a new user
+      parameters:
+      - description: Create user payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.UserWithoutTokenResponse'
+      summary: Create user
+      tags:
+      - auth/user
+  /{username}:
+    get:
+      description: Fetch a user's limited info by username
+      parameters:
+      - description: Username
+        in: path
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SimpleUser'
+      security:
+      - BearerAuth: []
+      summary: Get user by username (limited info)
+      tags:
+      - auth/user
+  /2fa:
+    post:
+      consumes:
+      - application/json
+      description: Submit 2FA code during login to obtain a user token
+      parameters:
+      - description: 2FA challenge payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.TwoFAChallengeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserWithTokenResponse'
+      summary: Submit 2FA challenge
+      tags:
+      - auth/user
+  /2fa/confirm:
+    post:
+      consumes:
+      - application/json
+      description: Confirm 2FA setup using the provided code and setup token
+      parameters:
+      - description: 2FA confirm payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.TwoFAConfirmRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserWithTokenResponse'
+      security:
+      - BearerAuth: []
+      summary: Confirm 2FA setup
+      tags:
+      - auth/user
+  /2fa/disable:
+    put:
+      consumes:
+      - application/json
+      description: Disable 2FA for the authenticated user
+      parameters:
+      - description: Disable 2FA payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DisableTwoFARequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserWithTokenResponse'
+      security:
+      - BearerAuth: []
+      summary: Disable 2FA
+      tags:
+      - auth/user
+  /2fa/setup:
+    post:
+      description: Initiate 2FA setup and return setup token and secret
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TwoFASetupResponse'
+      security:
+      - BearerAuth: []
+      summary: Start 2FA setup
+      tags:
+      - auth/user
+  /friends:
+    get:
+      description: Returns the authenticated user's friends
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.FriendsResponse'
+      security:
+      - BearerAuth: []
+      summary: List friends
+      tags:
+      - auth/user
+    post:
+      consumes:
+      - application/json
+      description: Add a new friend for the authenticated user
+      parameters:
+      - description: Add friend payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AddNewFriendRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.FriendResponse'
+      security:
+      - BearerAuth: []
+      summary: Add friend
+      tags:
+      - auth/user
+  /friends/{userId}:
+    delete:
+      description: Remove a friend by user id
+      parameters:
+      - description: Friend user id
+        in: path
+        name: userId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Remove friend
+      tags:
+      - auth/user
+  /google/callback:
+    get:
+      description: Handle Google OAuth callback and issue user token
+      parameters:
+      - description: OAuth code
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: OAuth state
+        in: query
+        name: state
+        required: true
+        type: string
+      responses:
+        "302":
+          description: Redirect to frontend with user token
+          schema:
+            type: string
+      summary: Google OAuth callback
+      tags:
+      - auth/user
+  /google/login:
+    get:
+      description: Start Google OAuth flow and return redirect URL
+      responses:
+        "302":
+          description: Redirect to Google OAuth consent screen
+          schema:
+            type: string
+      summary: Google OAuth login
+      tags:
+      - auth/user
+  /loginByIdentifier:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate a user
+      parameters:
+      - description: Login user payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserWithTokenResponse'
+        "428":
+          description: Precondition Required
+          schema:
+            $ref: '#/definitions/dto.TwoFAPendingUserResponse'
+      summary: Login user
+      tags:
+      - auth/user
+  /me:
+    delete:
+      description: Delete the authenticated user's account
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Delete account
+      tags:
+      - auth/user
+    get:
+      description: Returns the authenticated user's profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserWithoutTokenResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user profile
+      tags:
+      - auth/user
+    put:
+      consumes:
+      - application/json
+      description: Update username or avatar for the authenticated user
+      parameters:
+      - description: Update profile payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserWithoutTokenResponse'
+      security:
+      - BearerAuth: []
+      summary: Update profile
+      tags:
+      - auth/user
+  /password:
+    post:
+      consumes:
+      - application/json
+      description: Change password for the authenticated user
+      parameters:
+      - description: Update password payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateUserPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserWithTokenResponse'
+      security:
+      - BearerAuth: []
+      summary: Update password
+      tags:
+      - auth/user
+  /validate:
+    post:
+      description: Validate user existence and return minimal info
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserValidationResponse'
+      security:
+      - BearerAuth: []
+      summary: Validate user for game service
+      tags:
+      - auth/user
+swagger: "2.0"
