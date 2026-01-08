@@ -25,10 +25,6 @@ type UserService struct {
 
 func (s *UserService) CreateUser(ctx context.Context, request *dto.CreateUserRequest) (*dto.UserWithoutTokenResponse, error) {
 
-	if !validateAvatarURL(request.Avatar, MaxAvatarSize) {
-		return nil, middleware.NewAuthError(400, "invalid avatar URL or avatar size exceeds limit")
-	}
-
 	passwordBytes, err := bcrypt.GenerateFromPassword([]byte(request.Password.Password), BcryptSaltRounds)
 	if err != nil {
 		return nil, err
@@ -169,10 +165,6 @@ func (s *UserService) UpdateUserProfile(ctx context.Context, userID uint, reques
 			return nil, middleware.NewAuthError(404, "user not found")
 		}
 		return nil, err
-	}
-
-	if !validateAvatarURL(request.Avatar, MaxAvatarSize) {
-		return nil, middleware.NewAuthError(400, "invalid avatar URL or avatar size exceeds limit")
 	}
 
 	modelUser.Username = request.Username

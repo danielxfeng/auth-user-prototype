@@ -33,7 +33,7 @@ func (s *UserService) GetUserFriends(ctx context.Context, userID uint) (*dto.Fri
 		return nil, err
 	}
 
-	onlineStatus, err := gorm.G[model.HeartBeat](s.DB).Where("created_at > ?", time.Now().Add(-5*time.Minute)).Find(ctx)
+	onlineStatus, err := gorm.G[model.HeartBeat](s.DB).Where("last_seen_at > ?", time.Now().Add(-2*time.Minute)).Find(ctx)
 	if err != nil {
 		return nil, err
 	}

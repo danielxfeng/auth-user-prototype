@@ -1,6 +1,8 @@
 package db
 
 import (
+	"time"
+
 	"gorm.io/gorm"
 )
 
@@ -35,5 +37,6 @@ type Token struct {
 type HeartBeat struct {
 	gorm.Model
 
-	UserID uint `gorm:"not null"`
+	UserID     uint      `gorm:"uniqueIndex;not null"`
+	LastSeenAt time.Time `gorm:"not null"`
 }

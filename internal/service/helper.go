@@ -3,8 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -13,6 +11,7 @@ import (
 	"github.com/paularynty/transcendence/auth-service-go/internal/util"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func NewUserService(db *gorm.DB) *UserService {
@@ -62,48 +61,6 @@ func userToSimpleUser(user *model.User) *dto.SimpleUser {
 	}
 }
 
-func validateAvatarURL(avatar *string, maxSize int) bool {
-	if avatar == nil {
-		return true
-	}
-
-	client := &http.Client{
-		Timeout: 3 * time.Second,
-	}
-
-	req, err := http.NewRequest(http.MethodHead, *avatar, nil)
-	if err != nil {
-		return false
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return false
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return false
-	}
-
-	ct := resp.Header.Get("Content-Type")
-	if !strings.HasPrefix(ct, "image/") || ct == "image/svg+xml" {
-		return false
-	}
-
-	cl := resp.Header.Get("Content-Length")
-	if cl == "" {
-		return false
-	}
-
-	size, err := strconv.Atoi(cl)
-	if err != nil || size <= 0 || size > maxSize {
-		return false
-	}
-
-	return true
-}
-
 type onlineStatusChecker struct {
 	heartBeatSet map[uint]struct{}
 }
@@ -130,9 +87,13 @@ func (s *UserService) updateHeartBeat(userID uint) {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 
-		err := gorm.G[model.HeartBeat](s.DB).Create(ctx, &model.HeartBeat{
-			UserID: userID,
-		})
+		err := s.DB.WithContext(ctx).Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "user_id"}},
+			UpdateAll: true,
+		}).Create(&model.HeartBeat{
+			UserID:     userID,
+			LastSeenAt: time.Now(),
+		}).Error
 
 		if err != nil {
 			util.Logger.Warn("failed to update heartbeat for user", fmt.Sprint(userID), err.Error())
