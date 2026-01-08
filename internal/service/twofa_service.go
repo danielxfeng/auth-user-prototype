@@ -97,6 +97,7 @@ func (s *UserService) ConfirmTwoFaSetup(ctx context.Context, userID uint, reques
 	if err != nil {
 		return nil, err
 	}
+	modelUser.TwoFAToken = &twoFaSecret
 
 	userToken, err := s.issueNewTokenForUser(ctx, userID, true)
 	if err != nil {
@@ -135,6 +136,7 @@ func (s *UserService) DisableTwoFA(ctx context.Context, userID uint, request *dt
 	if err != nil {
 		return nil, err
 	}
+	modelUser.TwoFAToken = nil
 
 	userToken, err := s.issueNewTokenForUser(ctx, userID, true)
 	if err != nil {

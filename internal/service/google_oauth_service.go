@@ -64,7 +64,7 @@ func assembleFrontendRedirectURL(token *string, errMsg *string) string {
 	return u.String()
 }
 
-func (s *UserService) exchangeCodeForTokens(ctx context.Context, code string) (*idtoken.Payload, error) {
+var exchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
 	data := url.Values{}
 	data.Set("code", code)
 	data.Set("client_id", config.Cfg.GoogleClientId)
@@ -107,7 +107,7 @@ func (s *UserService) exchangeCodeForTokens(ctx context.Context, code string) (*
 	return payload, nil
 }
 
-func fetchGoogleUserInfo(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
+var fetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
 	sub := payload.Subject
 	if sub == "" {
 		return nil, middleware.NewAuthError(400, "google id token missing subject")
@@ -216,7 +216,7 @@ func (s *UserService) HandleGoogleOAuthCallback(ctx context.Context, code string
 		return HandleGoogleOAuthCallbackError(err, "invalid oauth state token")
 	}
 
-	googlePayload, err := s.exchangeCodeForTokens(ctx, code)
+	googlePayload, err := exchangeCodeForTokens(ctx, code)
 	if err != nil {
 		return HandleGoogleOAuthCallbackError(err, "failed to exchange code for tokens")
 	}

@@ -68,7 +68,7 @@ func (s *UserService) LoginUser(ctx context.Context, request *dto.LoginUserReque
 
 	modelUser, err := gorm.G[model.User](s.DB).Where(identifierField+" = ?", request.Identifier.Identifier).First(ctx)
 	if err != nil || modelUser.PasswordHash == nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, gorm.ErrRecordNotFound) || modelUser.PasswordHash == nil {
 			return nil, middleware.NewAuthError(401, "invalid credentials")
 		}
 		return nil, err
@@ -184,22 +184,22 @@ func (s *UserService) UpdateUserProfile(ctx context.Context, userID uint, reques
 }
 
 func (s *UserService) DeleteUser(ctx context.Context, userID uint) error {
-	_, err := gorm.G[model.Token](s.DB).Where("user_id = ?", userID).Delete(ctx)
+	_, err := gorm.G[model.Token](s.DB.Unscoped()).Where("user_id = ?", userID).Delete(ctx)
 	if err != nil {
 		return err
 	}
 
-	_, err = gorm.G[model.Friend](s.DB).Where("user_id = ? OR friend_id = ?", userID, userID).Delete(ctx)
+	_, err = gorm.G[model.Friend](s.DB.Unscoped()).Where("user_id = ? OR friend_id = ?", userID, userID).Delete(ctx)
 	if err != nil {
 		return err
 	}
 
-	_, err = gorm.G[model.HeartBeat](s.DB).Where("user_id = ?", userID).Delete(ctx)
+	_, err = gorm.G[model.HeartBeat](s.DB.Unscoped()).Where("user_id = ?", userID).Delete(ctx)
 	if err != nil {
 		return err
 	}
 
-	_, err = gorm.G[model.User](s.DB).Where("id = ?", userID).Delete(ctx)
+	_, err = gorm.G[model.User](s.DB.Unscoped()).Where("id = ?", userID).Delete(ctx)
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func (s *UserService) DeleteUser(ctx context.Context, userID uint) error {
 }
 
 func (s *UserService) LogoutUser(ctx context.Context, userID uint) error {
-	_, err := gorm.G[model.Token](s.DB).Where("user_id = ?", userID).Delete(ctx)
+	_, err := gorm.G[model.Token](s.DB.Unscoped()).Where("user_id = ?", userID).Delete(ctx)
 	if err != nil {
 		return err
 	}

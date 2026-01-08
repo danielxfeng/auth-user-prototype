@@ -1,0 +1,396 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"net/url"
+	"testing"
+
+	"cloud.google.com/go/auth/credentials/idtoken"
+	"github.com/paularynty/transcendence/auth-service-go/internal/config"
+	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
+	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
+	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
+	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
+)
+
+func TestGetGoogleOAuthURL(t *testing.T) {
+	db := setupTestDB(t.Name())
+	svc := NewUserService(db)
+	ctx := context.Background()
+
+	t.Run("Success", func(t *testing.T) {
+		authURL, err := svc.GetGoogleOAuthURL(ctx)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		u, err := url.Parse(authURL)
+		if err != nil {
+			t.Fatalf("failed to parse url: %v", err)
+		}
+
+		q := u.Query()
+		if q.Get("client_id") != config.Cfg.GoogleClientId {
+			t.Errorf("expected client_id %s, got %s", config.Cfg.GoogleClientId, q.Get("client_id"))
+		}
+		if q.Get("redirect_uri") != config.Cfg.GoogleRedirectUri {
+			t.Errorf("expected redirect_uri %s, got %s", config.Cfg.GoogleRedirectUri, q.Get("redirect_uri"))
+		}
+		if q.Get("state") == "" {
+			t.Error("expected state param")
+		}
+	})
+}
+
+func TestHandleGoogleOAuthCallback_InvalidState(t *testing.T) {
+	db := setupTestDB(t.Name())
+	svc := NewUserService(db)
+	ctx := context.Background()
+
+	// Helper to parse redirect URL
+	parseRedirect := func(redirectURL string) (string, string) {
+		u, _ := url.Parse(redirectURL)
+		q := u.Query()
+		return q.Get("token"), q.Get("error")
+	}
+
+	t.Run("InvalidState", func(t *testing.T) {
+		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "somecode", "invalidstate")
+		token, errMsg := parseRedirect(redirectURL)
+		
+		if token != "" {
+			t.Error("expected no token")
+		}
+		if errMsg == "" {
+			t.Error("expected error message")
+		}
+	})
+
+	t.Run("ExpiredState", func(t *testing.T) {
+		userToken, _ := jwt.SignUserToken(1)
+		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "somecode", userToken)
+		
+		_, errMsg := parseRedirect(redirectURL)
+		if errMsg == "" {
+			t.Error("expected error message for wrong token type")
+		}
+	})
+}
+
+func TestHandleGoogleOAuthCallback_Success(t *testing.T) {
+	ctx := context.Background()
+
+	// Mock dependencies
+	origExchange := exchangeCodeForTokens
+	origFetch := fetchGoogleUserInfo
+	defer func() {
+		exchangeCodeForTokens = origExchange
+		fetchGoogleUserInfo = origFetch
+	}()
+
+	state, _ := jwt.SignOauthStateToken()
+
+	t.Run("NewUser", func(t *testing.T) {
+		db := setupTestDB(t.Name())
+		svc := NewUserService(db)
+
+		exchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
+			return &idtoken.Payload{Subject: "g123"}, nil
+		}
+
+		fetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
+			return &dto.GoogleUserData{
+				ID:    "g123",
+				Email: "test@google.com",
+				Name:  "Google User",
+			}, nil
+		}
+
+		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "validcode", state)
+		
+		u, _ := url.Parse(redirectURL)
+		q := u.Query()
+		if q.Get("token") == "" {
+			t.Error("expected token in redirect")
+		}
+		if q.Get("error") != "" {
+			t.Errorf("unexpected error in redirect: %s", q.Get("error"))
+		}
+
+		// Verify user created
+		var user model.User
+		err := db.Where("email = ?", "test@google.com").First(&user).Error
+		if err != nil {
+			t.Error("expected user to be created")
+		}
+		if *user.GoogleOauthID != "g123" {
+			t.Error("expected google oauth id to be set")
+		}
+	})
+
+	t.Run("ExistingUser", func(t *testing.T) {
+		db := setupTestDB(t.Name())
+		svc := NewUserService(db)
+
+		// Create user first
+		svc.CreateUser(ctx, &dto.CreateUserRequest{
+			User: dto.User{UserName: dto.UserName{Username: "exist"}, Email: "test@google.com"},
+			Password: dto.Password{Password: "p"},
+		})
+		// Manually set google ID
+		db.Model(&model.User{}).Where("email = ?", "test@google.com").Update("google_oauth_id", "g123")
+
+		exchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
+			return &idtoken.Payload{Subject: "g123"}, nil
+		}
+
+		fetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
+			return &dto.GoogleUserData{
+				ID:    "g123",
+				Email: "test@google.com",
+				Name:  "Google User",
+			}, nil
+		}
+
+		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "validcode", state)
+		
+		u, _ := url.Parse(redirectURL)
+		q := u.Query()
+		if q.Get("token") == "" {
+			t.Error("expected token in redirect")
+		}
+	})
+}
+
+func TestHandleGoogleOAuthCallback_Errors(t *testing.T) {
+	db := setupTestDB(t.Name())
+	svc := NewUserService(db)
+	ctx := context.Background()
+
+	origExchange := exchangeCodeForTokens
+	origFetch := fetchGoogleUserInfo
+	defer func() {
+		exchangeCodeForTokens = origExchange
+		fetchGoogleUserInfo = origFetch
+	}()
+
+	state, _ := jwt.SignOauthStateToken()
+
+	t.Run("ExchangeError", func(t *testing.T) {
+		exchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
+			return nil, errors.New("exchange failed")
+		}
+		
+		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "code", state)
+		u, _ := url.Parse(redirectURL)
+		if u.Query().Get("error") == "" {
+			t.Error("expected error message")
+		}
+	})
+
+	t.Run("FetchError", func(t *testing.T) {
+		exchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
+			return &idtoken.Payload{}, nil
+		}
+		fetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
+			return nil, errors.New("fetch failed")
+		}
+
+		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "code", state)
+		u, _ := url.Parse(redirectURL)
+		if u.Query().Get("error") == "" {
+			t.Error("expected error message")
+		}
+	})
+}
+
+func TestLinkGoogleAccountToExistingUser(t *testing.T) {
+	db := setupTestDB(t.Name())
+	svc := NewUserService(db)
+	ctx := context.Background()
+
+	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
+		User: dto.User{UserName: dto.UserName{Username: "linkuser"}, Email: "link@e.com"},
+		Password: dto.Password{Password: "p"},
+	})
+
+	// Fetch model user
+	var modelUser model.User
+	db.First(&modelUser, u.ID)
+
+	t.Run("Success", func(t *testing.T) {
+		picture := "pic.png"
+		googleInfo := &dto.GoogleUserData{
+			ID: "g123",
+			Email: "link@e.com",
+			Picture: &picture,
+		}
+
+		err := svc.linkGoogleAccountToExistingUser(ctx, &modelUser, googleInfo)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if modelUser.GoogleOauthID == nil || *modelUser.GoogleOauthID != "g123" {
+			t.Error("expected google id to be set")
+		}
+		if modelUser.Avatar == nil || *modelUser.Avatar != "pic.png" {
+			t.Error("expected avatar to be updated")
+		}
+	})
+
+	t.Run("EmailMismatch", func(t *testing.T) {
+		googleInfo := &dto.GoogleUserData{
+			ID: "g456",
+			Email: "other@e.com",
+		}
+		err := svc.linkGoogleAccountToExistingUser(ctx, &modelUser, googleInfo)
+		if err == nil {
+			t.Error("expected error for email mismatch")
+		}
+	})
+
+	t.Run("AlreadyLinked", func(t *testing.T) {
+		// modelUser already has Google ID from Success test
+		googleInfo := &dto.GoogleUserData{
+			ID: "g789",
+			Email: "link@e.com",
+		}
+		err := svc.linkGoogleAccountToExistingUser(ctx, &modelUser, googleInfo)
+		if err == nil {
+			t.Error("expected error for already linked account")
+		}
+		authErr, ok := err.(*middleware.AuthError)
+		if !ok || authErr.Status != 400 {
+			t.Errorf("expected 400 error, got %v", err)
+		}
+	})
+}
+
+func TestCreateNewUserFromGoogleInfo(t *testing.T) {
+	db := setupTestDB(t.Name())
+	svc := NewUserService(db)
+	ctx := context.Background()
+
+	t.Run("Success", func(t *testing.T) {
+		googleInfo := &dto.GoogleUserData{
+			ID: "newg1",
+			Email: "new@g.com",
+			Name: "New User",
+		}
+		
+		user, err := svc.createNewUserFromGoogleInfo(ctx, googleInfo, false)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if user.Email != "new@g.com" {
+			t.Errorf("expected email new@g.com, got %s", user.Email)
+		}
+		if user.Username != "google_newg1" {
+			t.Errorf("expected username google_newg1, got %s", user.Username)
+		}
+	})
+
+	t.Run("DuplicateUsernameRetry", func(t *testing.T) {
+		// Create a user that conflicts with the default google username
+		svc.CreateUser(ctx, &dto.CreateUserRequest{
+			User: dto.User{UserName: dto.UserName{Username: "google_gdup"}, Email: "existing@e.com"},
+			Password: dto.Password{Password: "p"},
+		})
+
+		googleInfo := &dto.GoogleUserData{
+			ID: "gdup",
+			Email: "unique@g.com",
+		}
+
+		user, err := svc.createNewUserFromGoogleInfo(ctx, googleInfo, false)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		// Should have generated a random UUID based username
+		if user.Username == "google_gdup" {
+			t.Error("expected random username on collision")
+		}
+		if user.Email != "unique@g.com" {
+			t.Error("expected correct email")
+		}
+	})
+}
+
+func TestHandleGoogleOAuthCallback_DBError(t *testing.T) {
+	db := setupTestDB(t.Name())
+	svc := NewUserService(db)
+	ctx := context.Background()
+
+	origExchange := exchangeCodeForTokens
+	origFetch := fetchGoogleUserInfo
+	defer func() {
+		exchangeCodeForTokens = origExchange
+		fetchGoogleUserInfo = origFetch
+	}()
+
+	state, _ := jwt.SignOauthStateToken()
+
+	exchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
+		return &idtoken.Payload{Subject: "g123"}, nil
+	}
+
+	fetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
+		return &dto.GoogleUserData{
+			ID:    "g123",
+			Email: "test@google.com",
+			Name:  "Google User",
+		}, nil
+	}
+
+	sqlDB, _ := db.DB()
+	sqlDB.Close()
+
+	redirectURL := svc.HandleGoogleOAuthCallback(ctx, "code", state)
+	u, _ := url.Parse(redirectURL)
+	if u.Query().Get("error") == "" {
+		t.Error("expected error message on closed db")
+	}
+}
+
+func TestHandleGoogleOAuthCallback_LinkError(t *testing.T) {
+	db := setupTestDB(t.Name())
+	svc := NewUserService(db)
+	ctx := context.Background()
+
+	origExchange := exchangeCodeForTokens
+	origFetch := fetchGoogleUserInfo
+	defer func() {
+		exchangeCodeForTokens = origExchange
+		fetchGoogleUserInfo = origFetch
+	}()
+
+	state, _ := jwt.SignOauthStateToken()
+
+	exchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
+		return &idtoken.Payload{Subject: "new_g_id"}, nil
+	}
+
+	fetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
+		return &dto.GoogleUserData{
+			ID:    "new_g_id",
+			Email: "test@google.com",
+			Name:  "Google User",
+		}, nil
+	}
+
+	// Create user with SAME email but DIFFERENT google ID (already linked)
+	googleID := "old_g_id"
+	svc.DB.Create(&model.User{
+		Username:      "existing",
+		Email:         "test@google.com",
+		GoogleOauthID: &googleID,
+	})
+
+	redirectURL := svc.HandleGoogleOAuthCallback(ctx, "code", state)
+	u, _ := url.Parse(redirectURL)
+	if u.Query().Get("error") == "" {
+		t.Error("expected error message for link failure")
+	}
+}
