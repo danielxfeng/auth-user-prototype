@@ -32,7 +32,7 @@ func (h *UserHandler) CreateUserHandler(c *gin.Context) {
 // @Produce json
 // @Param body body dto.LoginUserRequest true "Login user payload"
 // @Success 200 {object} dto.UserWithTokenResponse
-// @Failure 428 {object} dto.TwoFaPendingUserResponse
+// @Failure 428 {object} dto.TwoFAPendingUserResponse
 // @Router /loginByIdentifier [post]
 func (h *UserHandler) LoginUserHandler(c *gin.Context) {
 }
@@ -208,7 +208,6 @@ func (h *UserHandler) ValidateUserHandler(c *gin.Context) {
 // @Summary Google OAuth login
 // @Description Start Google OAuth flow and return redirect URL
 // @Tags auth/user
-// @Produce redirect
 // @Success 302 {string} string "Redirect to Google OAuth consent screen"
 // @Router /google/login [get]
 func (h *UserHandler) GoogleLoginHandler(c *gin.Context) {
@@ -218,7 +217,6 @@ func (h *UserHandler) GoogleLoginHandler(c *gin.Context) {
 // @Summary Google OAuth callback
 // @Description Handle Google OAuth callback and issue user token
 // @Tags auth/user
-// @Produce redirect
 // @Param code query string true "OAuth code"
 // @Param state query string true "OAuth state"
 // @Success 302 {string} string "Redirect to frontend with user token"
