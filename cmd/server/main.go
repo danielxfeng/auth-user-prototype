@@ -3,16 +3,16 @@ package main
 import (
 	"net/http"
 
-   swaggerfiles "github.com/swaggo/files"
-   ginSwagger "github.com/swaggo/gin-swagger"
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	_ "github.com/paularynty/transcendence/auth-service-go/docs"
 	"github.com/paularynty/transcendence/auth-service-go/internal/config"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 	"github.com/paularynty/transcendence/auth-service-go/internal/routers"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util"
-	_ "github.com/paularynty/transcendence/auth-service-go/docs"
 
 	"log/slog"
 

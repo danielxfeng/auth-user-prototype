@@ -3,7 +3,7 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/paularynty/transcendence/auth-service-go/internal/util"
+	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
 )
 
 const PrefixBearer = "Bearer "
@@ -19,7 +19,7 @@ func Auth() gin.HandlerFunc {
 
 		tokenString := authHeader[len(PrefixBearer):]
 
-		userJwtPayload, err := util.ValidateUserTokenGeneric(tokenString)
+		userJwtPayload, err := jwt.ValidateUserTokenGeneric(tokenString)
 		if err != nil {
 			c.AbortWithError(401, NewAuthError(401, "Invalid or expired token"))
 			return

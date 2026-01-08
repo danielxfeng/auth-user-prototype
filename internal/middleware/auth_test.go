@@ -10,7 +10,7 @@ import (
 
 	"github.com/paularynty/transcendence/auth-service-go/internal/config"
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
-	"github.com/paularynty/transcendence/auth-service-go/internal/util"
+	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
 )
 
 func setupAuthConfig(t *testing.T) func() {
@@ -64,7 +64,7 @@ func TestAuthMiddlewareAllowsValidToken(t *testing.T) {
 	cleanup := setupAuthConfig(t)
 	defer cleanup()
 
-	token, err := util.SignUserToken(99)
+	token, err := jwt.SignUserToken(99)
 	if err != nil {
 		t.Fatalf("failed to sign user token: %v", err)
 	}
@@ -106,7 +106,7 @@ func TestAuthMiddlewareRejectsInvalidToken(t *testing.T) {
 	cleanup := setupAuthConfig(t)
 	defer cleanup()
 
-	token, err := util.SignTwoFAToken(10)
+	token, err := jwt.SignTwoFAToken(10)
 	if err != nil {
 		t.Fatalf("failed to sign 2fa token: %v", err)
 	}

@@ -1,14 +1,14 @@
-package util_test
+package jwt_test
 
 import (
 	"errors"
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
+	libjwt "github.com/golang-jwt/jwt/v5"
 
 	"github.com/paularynty/transcendence/auth-service-go/internal/config"
-	"github.com/paularynty/transcendence/auth-service-go/internal/util"
+	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
 )
 
 func setupTokenConfig(t *testing.T) func() {
@@ -30,12 +30,12 @@ func TestSignAndValidateUserToken(t *testing.T) {
 	cleanup := setupTokenConfig(t)
 	defer cleanup()
 
-	token, err := util.SignUserToken(42)
+	token, err := jwt.SignUserToken(42)
 	if err != nil {
 		t.Fatalf("SignUserToken returned error: %v", err)
 	}
 
-	claims, err := util.ValidateUserTokenGeneric(token)
+	claims, err := jwt.ValidateUserTokenGeneric(token)
 	if err != nil {
 		t.Fatalf("ValidateUserTokenGeneric returned error: %v", err)
 	}
@@ -44,8 +44,8 @@ func TestSignAndValidateUserToken(t *testing.T) {
 		t.Fatalf("expected user id 42, got %d", claims.UserID)
 	}
 
-	if claims.Type != util.UserTokenType {
-		t.Fatalf("expected claim type %q, got %q", util.UserTokenType, claims.Type)
+	if claims.Type != jwt.UserTokenType {
+		t.Fatalf("expected claim type %q, got %q", jwt.UserTokenType, claims.Type)
 	}
 
 	if claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) {
@@ -57,13 +57,13 @@ func TestValidateUserTokenRejectsWrongType(t *testing.T) {
 	cleanup := setupTokenConfig(t)
 	defer cleanup()
 
-	token, err := util.SignTwoFAToken(10)
+	token, err := jwt.SignTwoFAToken(10)
 	if err != nil {
 		t.Fatalf("SignTwoFAToken returned error: %v", err)
 	}
 
-	_, err = util.ValidateUserTokenGeneric(token)
-	if !errors.Is(err, jwt.ErrTokenInvalidClaims) {
+	_, err = jwt.ValidateUserTokenGeneric(token)
+	if !errors.Is(err, libjwt.ErrTokenInvalidClaims) {
 		t.Fatalf("expected ErrTokenInvalidClaims, got %v", err)
 	}
 }
@@ -72,18 +72,18 @@ func TestValidateOauthStateToken(t *testing.T) {
 	cleanup := setupTokenConfig(t)
 	defer cleanup()
 
-	token, err := util.SignOauthStateToken()
+	token, err := jwt.SignOauthStateToken()
 	if err != nil {
 		t.Fatalf("SignOauthStateToken returned error: %v", err)
 	}
 
-	claims, err := util.ValidateOauthStateToken(token)
+	claims, err := jwt.ValidateOauthStateToken(token)
 	if err != nil {
 		t.Fatalf("ValidateOauthStateToken returned error: %v", err)
 	}
 
-	if claims.Type != util.GoogleOAuthStateType {
-		t.Fatalf("expected oauth state type %q, got %q", util.GoogleOAuthStateType, claims.Type)
+	if claims.Type != jwt.GoogleOAuthStateType {
+		t.Fatalf("expected oauth state type %q, got %q", jwt.GoogleOAuthStateType, claims.Type)
 	}
 }
 
@@ -91,12 +91,12 @@ func TestValidateTwoFASetupToken(t *testing.T) {
 	cleanup := setupTokenConfig(t)
 	defer cleanup()
 
-	token, err := util.SignTwoFASetupToken(7, "secret")
+	token, err := jwt.SignTwoFASetupToken(7, "secret")
 	if err != nil {
 		t.Fatalf("SignTwoFASetupToken returned error: %v", err)
 	}
 
-	claims, err := util.ValidateTwoFASetupToken(token)
+	claims, err := jwt.ValidateTwoFASetupToken(token)
 	if err != nil {
 		t.Fatalf("ValidateTwoFASetupToken returned error: %v", err)
 	}

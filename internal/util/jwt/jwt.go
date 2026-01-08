@@ -1,9 +1,9 @@
-package util
+package jwt
 
 import (
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
+	libjwt "github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 
 	"github.com/paularynty/transcendence/auth-service-go/internal/config"
@@ -17,10 +17,10 @@ const (
 	TwoFATokenType       = "2FA"
 )
 
-func generateRegisteredClaims(expiration int) jwt.RegisteredClaims {
-	return jwt.RegisteredClaims{
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(expiration) * time.Second)),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
+func generateRegisteredClaims(expiration int) libjwt.RegisteredClaims {
+	return libjwt.RegisteredClaims{
+		ExpiresAt: libjwt.NewNumericDate(time.Now().Add(time.Duration(expiration) * time.Second)),
+		IssuedAt:  libjwt.NewNumericDate(time.Now()),
 		ID:        uuid.New().String(),
 	}
 }
@@ -32,7 +32,7 @@ func SignUserToken(userID uint) (string, error) {
 		RegisteredClaims: generateRegisteredClaims(config.Cfg.UserTokenExpiry),
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := libjwt.NewWithClaims(libjwt.SigningMethodHS256, claims)
 	signedToken, err := token.SignedString([]byte(config.Cfg.JwtSecret))
 	if err != nil {
 		return "", err
@@ -47,7 +47,7 @@ func SignOauthStateToken() (string, error) {
 		RegisteredClaims: generateRegisteredClaims(config.Cfg.OauthStateTokenExpiry),
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := libjwt.NewWithClaims(libjwt.SigningMethodHS256, claims)
 	signedToken, err := token.SignedString([]byte(config.Cfg.JwtSecret))
 	if err != nil {
 		return "", err
@@ -64,7 +64,7 @@ func SignTwoFASetupToken(userID int, secret string) (string, error) {
 		RegisteredClaims: generateRegisteredClaims(config.Cfg.TwoFaTokenExpiry),
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := libjwt.NewWithClaims(libjwt.SigningMethodHS256, claims)
 	signedToken, err := token.SignedString([]byte(config.Cfg.JwtSecret))
 	if err != nil {
 		return "", err
@@ -80,7 +80,7 @@ func SignTwoFAToken(userID int) (string, error) {
 		RegisteredClaims: generateRegisteredClaims(config.Cfg.TwoFaTokenExpiry),
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := libjwt.NewWithClaims(libjwt.SigningMethodHS256, claims)
 	signedToken, err := token.SignedString([]byte(config.Cfg.JwtSecret))
 	if err != nil {
 		return "", err
@@ -89,11 +89,11 @@ func SignTwoFAToken(userID int) (string, error) {
 	return signedToken, nil
 }
 
-func validateToken[T jwt.Claims](signedToken string, claims T) (T, error) {
-	token, err := jwt.ParseWithClaims(
+func validateToken[T libjwt.Claims](signedToken string, claims T) (T, error) {
+	token, err := libjwt.ParseWithClaims(
 		signedToken,
 		claims,
-		func(token *jwt.Token) (any, error) {
+		func(token *libjwt.Token) (any, error) {
 			return []byte(config.Cfg.JwtSecret), nil
 		},
 	)
@@ -102,7 +102,7 @@ func validateToken[T jwt.Claims](signedToken string, claims T) (T, error) {
 	}
 
 	if !token.Valid {
-		return claims, jwt.ErrTokenInvalidClaims
+		return claims, libjwt.ErrTokenInvalidClaims
 	}
 
 	return claims, nil
@@ -116,7 +116,7 @@ func ValidateUserTokenGeneric(signedToken string) (*dto.UserJwtPayload, error) {
 	}
 
 	if parsedClaims.Type != UserTokenType {
-		return nil, jwt.ErrTokenInvalidClaims
+		return nil, libjwt.ErrTokenInvalidClaims
 	}
 
 	return parsedClaims, nil
@@ -130,7 +130,7 @@ func ValidateOauthStateToken(signedToken string) (*dto.OauthStateJwtPayload, err
 	}
 
 	if parsedClaims.Type != GoogleOAuthStateType {
-		return nil, jwt.ErrTokenInvalidClaims
+		return nil, libjwt.ErrTokenInvalidClaims
 	}
 
 	return parsedClaims, nil
@@ -144,7 +144,7 @@ func ValidateTwoFAToken(signedToken string) (*dto.TwoFaJwtPayload, error) {
 	}
 
 	if parsedClaims.Type != TwoFATokenType {
-		return nil, jwt.ErrTokenInvalidClaims
+		return nil, libjwt.ErrTokenInvalidClaims
 	}
 
 	return parsedClaims, nil
@@ -158,7 +158,7 @@ func ValidateTwoFASetupToken(signedToken string) (*dto.TwoFaSetupJwtPayload, err
 	}
 
 	if parsedClaims.Type != TwoFASetupType {
-		return nil, jwt.ErrTokenInvalidClaims
+		return nil, libjwt.ErrTokenInvalidClaims
 	}
 
 	return parsedClaims, nil
