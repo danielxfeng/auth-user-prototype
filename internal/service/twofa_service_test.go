@@ -400,6 +400,26 @@ func TestDisableTwoFA(t *testing.T) {
 		}
 	})
 
+	t.Run("DBError", func(t *testing.T) {
+		db := setupTestDB(t.Name())
+		svc := NewUserService(db)
+		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
+			User: dto.User{UserName: dto.UserName{Username: "dis3"}, Email: "dis3@e.com"},
+			Password: dto.Password{Password: "p"},
+		})
+		
+		sqlDB, _ := db.DB()
+		sqlDB.Close()
+		
+		req := &dto.DisableTwoFARequest{
+			Password: dto.Password{Password: "p"},
+		}
+		_, err := svc.DisableTwoFA(ctx, u.ID, req)
+		if err == nil {
+			t.Error("expected error on closed db")
+		}
+	})
+	
 	t.Run("InvalidPassword", func(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
@@ -423,26 +443,6 @@ func TestDisableTwoFA(t *testing.T) {
 		authErr, ok := err.(*middleware.AuthError)
 		if !ok || authErr.Status != 401 {
 			t.Errorf("expected 401 error, got %v", err)
-		}
-	})
-
-	t.Run("DBError", func(t *testing.T) {
-		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
-		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "dis3"}, Email: "dis3@e.com"},
-			Password: dto.Password{Password: "p"},
-		})
-		
-		sqlDB, _ := db.DB()
-		sqlDB.Close()
-		
-		req := &dto.DisableTwoFARequest{
-			Password: dto.Password{Password: "p"},
-		}
-		_, err := svc.DisableTwoFA(ctx, u.ID, req)
-		if err == nil {
-			t.Error("expected error on closed db")
 		}
 	})
 }

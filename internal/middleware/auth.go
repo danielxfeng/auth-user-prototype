@@ -26,6 +26,7 @@ func Auth() gin.HandlerFunc {
 		}
 
 		c.Set("userID", userJwtPayload.UserID)
+		c.Set("token", tokenString)
 
 		c.Next()
 	}

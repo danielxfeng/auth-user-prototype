@@ -35,6 +35,10 @@ func setupTestDB(testName string) *gorm.DB {
 		panic("failed to migrate database")
 	}
 
+	if sqlDB, err := db.DB(); err == nil {
+		sqlDB.SetMaxOpenConns(1)
+	}
+
 	return db
 }
 

@@ -63,6 +63,12 @@ func TestHelperFunctions(t *testing.T) {
 		db := setupTestDB(t.Name())
 		svc := NewUserService(db)
 		
+		// Create user first to satisfy FK
+		svc.CreateUser(context.Background(), &dto.CreateUserRequest{
+			User: dto.User{UserName: dto.UserName{Username: "hb"}, Email: "hb@e.com"},
+			Password: dto.Password{Password: "p"},
+		})
+
 		// Create heartbeat entry
 		svc.updateHeartBeat(1)
 		

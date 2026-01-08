@@ -79,34 +79,33 @@ func TestHandleGoogleOAuthCallback_InvalidState(t *testing.T) {
 }
 
 func TestHandleGoogleOAuthCallback_Success(t *testing.T) {
+	db := setupTestDB(t.Name())
+	svc := NewUserService(db)
 	ctx := context.Background()
 
 	// Mock dependencies
-	origExchange := exchangeCodeForTokens
-	origFetch := fetchGoogleUserInfo
+	origExchange := ExchangeCodeForTokens
+	origFetch := FetchGoogleUserInfo
 	defer func() {
-		exchangeCodeForTokens = origExchange
-		fetchGoogleUserInfo = origFetch
+		ExchangeCodeForTokens = origExchange
+		FetchGoogleUserInfo = origFetch
 	}()
+
+	ExchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
+		return &idtoken.Payload{Subject: "g123"}, nil
+	}
+
+	FetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
+		return &dto.GoogleUserData{
+			ID:    "g123",
+			Email: "test@google.com",
+			Name:  "Google User",
+		}, nil
+	}
 
 	state, _ := jwt.SignOauthStateToken()
 
 	t.Run("NewUser", func(t *testing.T) {
-		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
-
-		exchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
-			return &idtoken.Payload{Subject: "g123"}, nil
-		}
-
-		fetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
-			return &dto.GoogleUserData{
-				ID:    "g123",
-				Email: "test@google.com",
-				Name:  "Google User",
-			}, nil
-		}
-
 		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "validcode", state)
 		
 		u, _ := url.Parse(redirectURL)
@@ -130,29 +129,7 @@ func TestHandleGoogleOAuthCallback_Success(t *testing.T) {
 	})
 
 	t.Run("ExistingUser", func(t *testing.T) {
-		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
-
-		// Create user first
-		svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "exist"}, Email: "test@google.com"},
-			Password: dto.Password{Password: "p"},
-		})
-		// Manually set google ID
-		db.Model(&model.User{}).Where("email = ?", "test@google.com").Update("google_oauth_id", "g123")
-
-		exchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
-			return &idtoken.Payload{Subject: "g123"}, nil
-		}
-
-		fetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
-			return &dto.GoogleUserData{
-				ID:    "g123",
-				Email: "test@google.com",
-				Name:  "Google User",
-			}, nil
-		}
-
+		// User already created in previous run
 		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "validcode", state)
 		
 		u, _ := url.Parse(redirectURL)
@@ -168,17 +145,17 @@ func TestHandleGoogleOAuthCallback_Errors(t *testing.T) {
 	svc := NewUserService(db)
 	ctx := context.Background()
 
-	origExchange := exchangeCodeForTokens
-	origFetch := fetchGoogleUserInfo
+	origExchange := ExchangeCodeForTokens
+	origFetch := FetchGoogleUserInfo
 	defer func() {
-		exchangeCodeForTokens = origExchange
-		fetchGoogleUserInfo = origFetch
+		ExchangeCodeForTokens = origExchange
+		FetchGoogleUserInfo = origFetch
 	}()
 
 	state, _ := jwt.SignOauthStateToken()
 
 	t.Run("ExchangeError", func(t *testing.T) {
-		exchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
+		ExchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
 			return nil, errors.New("exchange failed")
 		}
 		
@@ -190,10 +167,10 @@ func TestHandleGoogleOAuthCallback_Errors(t *testing.T) {
 	})
 
 	t.Run("FetchError", func(t *testing.T) {
-		exchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
+		ExchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
 			return &idtoken.Payload{}, nil
 		}
-		fetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
+		FetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
 			return nil, errors.New("fetch failed")
 		}
 
@@ -323,20 +300,20 @@ func TestHandleGoogleOAuthCallback_DBError(t *testing.T) {
 	svc := NewUserService(db)
 	ctx := context.Background()
 
-	origExchange := exchangeCodeForTokens
-	origFetch := fetchGoogleUserInfo
+	origExchange := ExchangeCodeForTokens
+	origFetch := FetchGoogleUserInfo
 	defer func() {
-		exchangeCodeForTokens = origExchange
-		fetchGoogleUserInfo = origFetch
+		ExchangeCodeForTokens = origExchange
+		FetchGoogleUserInfo = origFetch
 	}()
 
 	state, _ := jwt.SignOauthStateToken()
 
-	exchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
+	ExchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
 		return &idtoken.Payload{Subject: "g123"}, nil
 	}
 
-	fetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
+	FetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
 		return &dto.GoogleUserData{
 			ID:    "g123",
 			Email: "test@google.com",
@@ -359,20 +336,20 @@ func TestHandleGoogleOAuthCallback_LinkError(t *testing.T) {
 	svc := NewUserService(db)
 	ctx := context.Background()
 
-	origExchange := exchangeCodeForTokens
-	origFetch := fetchGoogleUserInfo
+	origExchange := ExchangeCodeForTokens
+	origFetch := FetchGoogleUserInfo
 	defer func() {
-		exchangeCodeForTokens = origExchange
-		fetchGoogleUserInfo = origFetch
+		ExchangeCodeForTokens = origExchange
+		FetchGoogleUserInfo = origFetch
 	}()
 
 	state, _ := jwt.SignOauthStateToken()
 
-	exchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
+	ExchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
 		return &idtoken.Payload{Subject: "new_g_id"}, nil
 	}
 
-	fetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
+	FetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
 		return &dto.GoogleUserData{
 			ID:    "new_g_id",
 			Email: "test@google.com",

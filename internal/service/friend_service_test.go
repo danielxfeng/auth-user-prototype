@@ -97,7 +97,6 @@ func TestAddNewFriend(t *testing.T) {
 			if count > 0 {
 				t.Fatal("expected error, but friend was added despite FK violation")
 			}
-			// If count is 0, it failed silently, which is acceptable for this test context if GORM is being quirky
 			return
 		}
 		authErr, ok := err.(*middleware.AuthError)

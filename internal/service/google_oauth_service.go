@@ -64,7 +64,7 @@ func assembleFrontendRedirectURL(token *string, errMsg *string) string {
 	return u.String()
 }
 
-var exchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
+var ExchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
 	data := url.Values{}
 	data.Set("code", code)
 	data.Set("client_id", config.Cfg.GoogleClientId)
@@ -107,7 +107,7 @@ var exchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Pay
 	return payload, nil
 }
 
-var fetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
+var FetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
 	sub := payload.Subject
 	if sub == "" {
 		return nil, middleware.NewAuthError(400, "google id token missing subject")
@@ -216,12 +216,12 @@ func (s *UserService) HandleGoogleOAuthCallback(ctx context.Context, code string
 		return HandleGoogleOAuthCallbackError(err, "invalid oauth state token")
 	}
 
-	googlePayload, err := exchangeCodeForTokens(ctx, code)
+	googlePayload, err := ExchangeCodeForTokens(ctx, code)
 	if err != nil {
 		return HandleGoogleOAuthCallbackError(err, "failed to exchange code for tokens")
 	}
 
-	googleUserInfo, err := fetchGoogleUserInfo(googlePayload)
+	googleUserInfo, err := FetchGoogleUserInfo(googlePayload)
 	if err != nil {
 		return HandleGoogleOAuthCallbackError(err, "failed to fetch google user info from id token")
 	}

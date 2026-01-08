@@ -184,22 +184,7 @@ func (s *UserService) UpdateUserProfile(ctx context.Context, userID uint, reques
 }
 
 func (s *UserService) DeleteUser(ctx context.Context, userID uint) error {
-	_, err := gorm.G[model.Token](s.DB.Unscoped()).Where("user_id = ?", userID).Delete(ctx)
-	if err != nil {
-		return err
-	}
-
-	_, err = gorm.G[model.Friend](s.DB.Unscoped()).Where("user_id = ? OR friend_id = ?", userID, userID).Delete(ctx)
-	if err != nil {
-		return err
-	}
-
-	_, err = gorm.G[model.HeartBeat](s.DB.Unscoped()).Where("user_id = ?", userID).Delete(ctx)
-	if err != nil {
-		return err
-	}
-
-	_, err = gorm.G[model.User](s.DB.Unscoped()).Where("id = ?", userID).Delete(ctx)
+	_, err := gorm.G[model.User](s.DB.Unscoped()).Where("id = ?", userID).Delete(ctx)
 	if err != nil {
 		return err
 	}

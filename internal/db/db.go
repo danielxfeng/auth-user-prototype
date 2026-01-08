@@ -19,6 +19,8 @@ func ConnectDB(dbName string) {
 		panic("failed to connect to db: " + dbName)
 	}
 
+	DB.Exec("PRAGMA foreign_keys = ON")
+
 	for _, model := range []any{
 		&User{},
 		&Friend{},
