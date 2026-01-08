@@ -20,7 +20,6 @@ import (
 	"gorm.io/gorm"
 )
 
-
 func (s *UserService) GetGoogleOAuthURL(ctx context.Context) (string, error) {
 	state, err := jwt.SignOauthStateToken()
 	if err != nil {
