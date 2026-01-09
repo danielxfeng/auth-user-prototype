@@ -26,6 +26,7 @@ import {
 	UserWithoutTokenResponseSchema,
 	UserWithTokenResponseSchema
 } from '$lib/schemas/userSchema.js';
+import { STORAGE_TOKEN } from '$lib/stores/userStore.js';
 import * as z from 'zod';
 import { AuthError, type AuthErrorStatus } from '../errors/error.js';
 
@@ -51,13 +52,30 @@ const apiFetcher = async <TRequest, TResponse>(
 		throw new AuthError(400, validateRequest.error.message);
 	}
 
+	let token: string | null = null;
+	try {
+		token = localStorage.getItem(STORAGE_TOKEN) || null;
+	} catch {
+		// Ignore localStorage errors
+	}
+
 	const response = await fetch(`${API_BASE_URL}${path}`, {
 		method,
-		headers: { 'Content-Type': 'application/json' },
+		headers: {
+			'Content-Type': 'application/json',
+			...(token ? { Authorization: `Bearer ${token}` } : {})
+		},
 		body: data ? JSON.stringify(validateRequest!.data) : undefined
 	});
 
-	const responseData = await response.json();
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let responseData: any;
+
+	try {
+		responseData = await response.json();
+	} catch {
+		throw new AuthError(500, 'Invalid JSON response from server');
+	}
 
 	if (!response.ok) {
 		const message =
