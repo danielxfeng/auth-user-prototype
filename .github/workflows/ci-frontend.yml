@@ -8,7 +8,7 @@ on:
       - '.github/workflows/ci-frontend.yml'
   
 jobs:
-  test:
+  test-frontend:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -23,8 +23,9 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: frontend/.nvmrc
+          node-version: '24'
           cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install
