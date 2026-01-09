@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"os"
+	"time"
 
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -20,6 +21,8 @@ import (
 
 	sloggin "github.com/samber/slog-gin"
 
+	"github.com/gin-contrib/cors"
+
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 )
 
@@ -31,6 +34,23 @@ func SetupRouter(logger *slog.Logger) *gin.Engine {
 		ClientErrorLevel: slog.LevelWarn,
 		ServerErrorLevel: slog.LevelError,
 	}
+
+	r.Use(cors.New(cors.Config{
+		AllowOrigins: []string{
+			"http://localhost:5173",
+			"http://localhost:4173",
+			"https://localhost:5173",
+			"https://c2r5p11.hive.fi:5173",
+		},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
+	rateLimiter := middleware.NewRateLimiter(60*time.Second, 1000)
+	r.Use(rateLimiter.RateLimit())
 
 	r.Use(middleware.PanicHandler())
 	r.Use(sloggin.NewWithConfig(logger, logConfig))
