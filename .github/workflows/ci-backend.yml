@@ -1,0 +1,36 @@
+name: CI-Auth-Backend
+
+on:
+  pull_request:
+    branches: ['main']
+    paths:
+      - 'auth-service-go/**'
+      - '.github/workflows/ci-auth-go.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: auth-service-go
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: auth-service-go/go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+      
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.6
+          working-directory: auth-service-go
+
+      - name: Run tests
+        run: make test
