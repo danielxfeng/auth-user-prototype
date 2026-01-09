@@ -4,8 +4,8 @@ on:
   pull_request:
     branches: ['main']
     paths:
-      - 'auth-service-go/**'
-      - '.github/workflows/ci-auth-go.yml'
+      - 'backend/**'
+      - '.github/workflows/ci-backend.yml'
 
 jobs:
   test:
