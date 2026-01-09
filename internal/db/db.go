@@ -35,6 +35,21 @@ func ConnectDB(dbName string) {
 	util.Logger.Info("connected to db")
 }
 
+func CloseDB() {
+	sqlDB, err := DB.DB()
+	if err != nil {
+		util.Logger.Error("failed to get db instance", "err", err)
+		return
+	}
+
+	if err := sqlDB.Close(); err != nil {
+		util.Logger.Error("failed to close db", "err", err)
+		return
+	}
+
+	util.Logger.Info("db connection closed")
+}
+
 func ResetDB() {
 	util.Logger.Warn("resetting db...")
 

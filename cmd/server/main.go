@@ -11,6 +11,7 @@ import (
 	"github.com/joho/godotenv"
 	_ "github.com/paularynty/transcendence/auth-service-go/docs"
 	"github.com/paularynty/transcendence/auth-service-go/internal/config"
+	"github.com/paularynty/transcendence/auth-service-go/internal/db"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 	"github.com/paularynty/transcendence/auth-service-go/internal/routers"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util"
@@ -55,6 +56,10 @@ func main() {
 
 	// validator
 	dto.InitValidator()
+
+	// database
+	db.ConnectDB(config.Cfg.DbAddress)
+	defer db.CloseDB()
 
 	// router
 	r := SetupRouter(util.Logger)

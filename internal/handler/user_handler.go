@@ -83,7 +83,12 @@ func (h *UserHandler) LoginUserHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, user)
+	if user.User == nil {
+		handleError(c, errors.New("missing user payload"))
+		return
+	}
+
+	c.JSON(200, user.User)
 }
 
 // LogoutUserHandler godoc

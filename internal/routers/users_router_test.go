@@ -149,9 +149,9 @@ func TestUsersRouter_LoginUser(t *testing.T) {
 		t.Fatalf("expected status 200, got %d. Body: %s", resp.Code, resp.Body.String())
 	}
 
-	var res service.LoginResult
+	var res dto.UserWithTokenResponse
 	_ = json.Unmarshal(resp.Body.Bytes(), &res)
-	if res.User == nil || res.User.Token == "" {
+	if res.Token == "" {
 		t.Errorf("expected token in response. Body: %s", resp.Body.String())
 	}
 }

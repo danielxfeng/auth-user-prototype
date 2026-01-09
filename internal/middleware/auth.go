@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"strings"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
@@ -12,7 +14,7 @@ func Auth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 
-		if authHeader == "" || len(authHeader) < len(PrefixBearer) || authHeader[:len(PrefixBearer)] != PrefixBearer {
+		if authHeader == "" || !strings.HasPrefix(authHeader, PrefixBearer) {
 			_ = c.AbortWithError(401, NewAuthError(401, "Invalid or expired token"))
 			return
 		}

@@ -15,6 +15,11 @@ import (
 )
 
 func NewUserService(db *gorm.DB) *UserService {
+
+	if db == nil {
+		panic("UserService: db is nil")
+	}
+
 	return &UserService{
 		DB: db,
 	}
