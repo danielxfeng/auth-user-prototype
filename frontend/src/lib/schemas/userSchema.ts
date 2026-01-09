@@ -81,7 +81,7 @@ export const SimpleUserResponseSchema = z.object({
 	avatar: z.url().trim().nullable()
 });
 
-export const UsersResponseSchema = z.array(UserWithoutTokenResponseSchema);
+export const UsersResponseSchema = z.array(SimpleUserResponseSchema);
 
 // For Two-factor authentication
 
