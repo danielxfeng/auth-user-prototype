@@ -5,6 +5,7 @@
 	import DeleteAccount from './DeleteAccount.svelte';
 	import Logout from './Logout.svelte';
 	import ChangePasswordForm from './ChangePasswordForm.svelte';
+	import TwoFaSetup from './TwoFaSetup.svelte';
 
 	onMount(() => {
 		if (!$userStore.user) {
@@ -15,6 +16,7 @@
 
 {#if $userStore.user}
 	<div class="flex flex-col gap-8 px-6">
+		<TwoFaSetup />
 		<ChangePasswordForm />
 		<Logout />
 		<DeleteAccount />
