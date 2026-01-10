@@ -119,6 +119,10 @@ export const TwoFaSetupResponseSchema = z.object({
 	setupToken: z.string()
 });
 
+export const TwoFaConfirmFormSchema = z.object({
+	twoFaCode: z.string().min(6).max(6)
+});
+
 // 2FA confirm
 export const TwoFaConfirmRequestSchema = z.object({
 	twoFaCode: z.string().min(6).max(6),
@@ -131,8 +135,7 @@ export const TwoFaDisableRequestSchema = z.object({
 });
 
 export const TwoFaChallengeRequestSchema = z.object({
-	twoFaCode: z.string(),
-	sessionToken: z.string()
+	twoFaCode: z.string()
 });
 
 export const TwoFaPendingUserResponseSchema = z.object({

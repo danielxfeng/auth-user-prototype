@@ -11,7 +11,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
 
-	let { closeShowTwoFaForm } = $props();
+	const { closeShowTwoFaForm } = $props();
 
 	const { form, constraints, errors, enhance, submitting } = superForm(
 		defaults(zod4(TwoFaDisableRequestSchema)),

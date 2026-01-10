@@ -15,9 +15,11 @@
 </script>
 
 {#if $userStore.user}
-	<div class="flex flex-col gap-8 px-6">
+	<div class="flex flex-col gap-8 px-6 flex-1">
 		<TwoFaSetup />
+		<hr />
 		<ChangePasswordForm />
+		<hr />
 		<Logout />
 		<DeleteAccount />
 	</div>
