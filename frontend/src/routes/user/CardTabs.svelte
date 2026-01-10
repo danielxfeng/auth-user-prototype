@@ -6,8 +6,7 @@
 
 	const loggedLinks = [
 		{ href: '/user/profile/', label: 'Profile' },
-		{ href: '/user/settings/', label: 'Settings' },
-		{ href: '/user/friends/', label: 'Friends' }
+		{ href: '/user/settings/', label: 'Settings' }
 	];
 
 	const guestLinks = [
