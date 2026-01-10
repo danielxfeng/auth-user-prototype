@@ -58,9 +58,7 @@
 		<Field.Description>Log in to your account by entering your credentials below.</Field.Description
 		>
 
-		<Button href={`${cfg.apiBaseUrl}/google/login`} variant="default">
-			Login with Google
-		</Button>
+		<Button href={`${cfg.apiBaseUrl}/google/login`} variant="default">Login with Google</Button>
 
 		<Field.Group>
 			<Field.Field>
@@ -95,7 +93,6 @@
 					<Field.Error>{$errors.password}</Field.Error>
 				{/if}
 			</Field.Field>
-
 		</Field.Group>
 	</Field.Set>
 
