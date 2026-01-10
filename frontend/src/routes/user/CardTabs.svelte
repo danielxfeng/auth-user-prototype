@@ -28,7 +28,9 @@
 		<Button
 			href={link.href}
 			variant="outline"
-			class={isActive(link.href) ? 'bg-primary text-primary-foreground hover:bg-primary/90' : ''}
+			class={isActive(link.href)
+				? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
+				: ''}
 		>
 			{link.label}
 		</Button>
