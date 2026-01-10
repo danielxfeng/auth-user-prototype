@@ -11,17 +11,22 @@ type UserStore = {
 
 const saveToLocalStorage = (state: UserStore): void => {
 	if (!state.user || !state.token) return;
+	if (typeof window === 'undefined') return;
 
 	localStorage.setItem(STORAGE_USER, JSON.stringify(state.user));
 	localStorage.setItem(STORAGE_TOKEN, state.token);
 };
 
 const removeFromLocalStorage = () => {
+	if (typeof window === 'undefined') return;
+
 	localStorage.removeItem(STORAGE_USER);
 	localStorage.removeItem(STORAGE_TOKEN);
 };
 
 const getFromLocalStorage = (): UserStore => {
+	if (typeof window === 'undefined') return { user: null, token: null };
+
 	try {
 		const userStr = localStorage.getItem(STORAGE_USER);
 		const token = localStorage.getItem(STORAGE_TOKEN);
@@ -34,10 +39,14 @@ const getFromLocalStorage = (): UserStore => {
 	}
 };
 
-const { subscribe, set } = writable<UserStore>(getFromLocalStorage());
+const { subscribe, set } = writable<UserStore>({ user: null, token: null });
 
 export const userStore = {
 	subscribe,
+
+	hydrate() {
+		set(getFromLocalStorage());
+	},
 
 	login(user: UserWithTokenResponse) {
 		const { token, ...userWithoutToken } = user;
