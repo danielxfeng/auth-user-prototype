@@ -2,6 +2,7 @@ import * as z from 'zod';
 
 import {
 	AddNewFriendRequestSchema,
+	CreateUserFormSchema,
 	CreateUserSchema,
 	FriendResponseSchema,
 	GetFriendsResponseSchema,
@@ -25,6 +26,7 @@ import {
 
 export type User = z.infer<typeof UserSchema>;
 export type CreateUserRequest = z.infer<typeof CreateUserSchema>;
+export type CreateUserForm = z.infer<typeof CreateUserFormSchema>;
 export type UpdateUserPasswordRequest = z.infer<typeof UpdateUserPasswordRequestSchema>;
 export type LoginUserRequest = z.infer<typeof LoginUserRequestSchema>;
 export type LoginUserByEmailRequest = z.infer<typeof LoginUserByEmailRequestSchema>;
