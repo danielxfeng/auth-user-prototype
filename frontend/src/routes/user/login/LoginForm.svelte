@@ -15,7 +15,7 @@
 
 	let { goto2fa } = $props();
 
-	const { form, constraints, errors, enhance, submitting } = superForm(
+	const { form, constraints, errors, enhance, submitting, reset } = superForm(
 		defaults(zod4(LoginUserByIdentifierRequestSchema)),
 		{
 			SPA: true,
@@ -26,6 +26,7 @@
 				try {
 					const user = await loginUser(form.data);
 
+					reset();
 					if (user === '2FA_REQUIRED') {
 						goto2fa();
 						return;
@@ -44,6 +45,8 @@
 					}
 
 					toast.error('Login failed, please try again later.');
+				} finally {
+					form.data.password = '';
 				}
 			}
 		}

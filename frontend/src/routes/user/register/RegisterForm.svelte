@@ -10,8 +10,9 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
+	import { resetMode } from 'mode-watcher';
 
-	const { form, constraints, errors, enhance, submitting } = superForm(
+	const { form, constraints, errors, enhance, submitting, reset } = superForm(
 		defaults(zod4(CreateUserFormSchema)),
 		{
 			SPA: true,
@@ -24,6 +25,7 @@
 					void confirmPassword;
 
 					await registerUser(payload);
+					reset();
 					toast.success('Registration successful! Redirecting to login...');
 
 					goto('/user/login');
@@ -35,6 +37,9 @@
 					}
 
 					toast.error('Registration failed, please try again later.');
+				} finally {
+					form.data.password = '';
+					form.data.confirmPassword = '';
 				}
 			}
 		}
