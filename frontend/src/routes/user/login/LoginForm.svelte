@@ -15,7 +15,7 @@
 
 	let { goto2fa } = $props();
 
-	const { form, constraints, errors, enhance, submitting, reset } = superForm(
+	const { form, constraints, errors, enhance, submitting } = superForm(
 		defaults(zod4(LoginUserByIdentifierRequestSchema)),
 		{
 			SPA: true,

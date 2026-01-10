@@ -12,7 +12,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
 
-	const { form, constraints, errors, enhance, submitting, reset } = superForm(
+	const { form, constraints, errors, enhance, submitting } = superForm(
 		defaults(zod4(UpdateUserPasswordFormSchema)),
 		{
 			SPA: true,
