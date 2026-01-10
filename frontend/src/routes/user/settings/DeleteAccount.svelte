@@ -28,7 +28,7 @@
 <AlertDialog.Root>
 	<AlertDialog.Trigger class={buttonVariants({ variant: 'destructive' })}>
 		{#if deleting}
-			<Spinner /> Deleting...
+			<Spinner class="mr-2 h-4 w-4 animate-spin"/> Deleting...
 		{:else}
 			Delete Account
 		{/if}

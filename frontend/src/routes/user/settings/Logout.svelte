@@ -27,7 +27,7 @@
 
 <Button variant="outline" onclick={logoutHandler} disabled={logoutInProgress}>
   {#if logoutInProgress}
-    <Spinner /> Logging out...
+    <Spinner class="mr-2 h-4 w-4 animate-spin"/> Logging out...
   {:else}
     Logout
   {/if}
