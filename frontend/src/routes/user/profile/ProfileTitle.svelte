@@ -15,6 +15,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import type { UpdateUserRequest } from '$lib/schemas/types';
+	import { fly } from 'svelte/transition';
 
 	let editing = false;
 
@@ -84,7 +85,13 @@
 	</h2>
 
 	{#if editing}
-		<form method="POST" use:enhance class="mt-6 space-y-4">
+		<form
+			method="POST"
+			use:enhance
+			class="mt-6 space-y-4"
+			in:fly={{ y: -10, duration: 300 }}
+			out:fly={{ y: 10, duration: 300 }}
+		>
 			<Field.Set>
 				<Field.Field>
 					<Input
