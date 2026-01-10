@@ -25,8 +25,6 @@
 
 				try {
 					const user = await loginUser(form.data);
-
-					reset();
 					if (user === '2FA_REQUIRED') {
 						goto2fa();
 						return;
@@ -36,7 +34,9 @@
 
 					userStore.login(user);
 
-					goto('/');
+					setTimeout(() => {
+						goto('/');
+					}, 0);
 				} catch (error) {
 					if (error instanceof AuthError && error.status === 401) {
 						setError(form, 'identifier', 'Invalid username or email');
