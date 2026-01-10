@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { userStore } from '$lib/stores';
-	import { cn } from '$lib/utils/cn';
+	import { cn } from '$lib/utils';
 
 	const loggedLinks = [
 		{ href: '/profile/', label: 'Profile' },
