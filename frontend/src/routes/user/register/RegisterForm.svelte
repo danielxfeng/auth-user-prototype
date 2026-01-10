@@ -26,9 +26,7 @@
 					await registerUser(payload);
 					toast.success('Registration successful! Redirecting to login...');
 
-					setTimeout(() => {
-						goto('/user/login/');
-					}, 2000);
+					goto('/user/login');
 				} catch (error) {
 					if (error instanceof AuthError && error.status === 409) {
 						setError(form, 'username', 'Username or Email already taken');

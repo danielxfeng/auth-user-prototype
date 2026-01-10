@@ -19,7 +19,7 @@
     } finally {
       userStore.logout();
       logoutInProgress = false;
-      goto("/", { replaceState: true });
+      goto("/");
     }
   };
   

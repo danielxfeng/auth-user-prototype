@@ -16,9 +16,7 @@
 			userStore.logout();
 			toast.success('Account deleted successfully, navigating to home page...');
 			
-      setTimeout(() => {
-        goto('/');
-      }, 2000);
+      goto('/');
 		} catch {
 			toast.error('Failed to delete account. Please try again.');
 		} finally {

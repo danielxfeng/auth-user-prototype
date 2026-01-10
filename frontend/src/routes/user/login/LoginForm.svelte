@@ -35,9 +35,7 @@
 
 					userStore.login(user);
 
-					setTimeout(() => {
-						goto('/');
-					}, 2000);
+					goto('/');
 				} catch (error) {
 					if (error instanceof AuthError && error.status === 401) {
 						setError(form, 'identifier', 'Invalid username or email');
