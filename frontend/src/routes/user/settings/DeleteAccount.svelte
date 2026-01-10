@@ -15,8 +15,8 @@
 			await deleteAccount();
 			userStore.logout();
 			toast.success('Account deleted successfully, navigating to home page...');
-			
-      goto('/');
+
+			goto('/');
 		} catch {
 			toast.error('Failed to delete account. Please try again.');
 		} finally {
@@ -28,7 +28,7 @@
 <AlertDialog.Root>
 	<AlertDialog.Trigger class={buttonVariants({ variant: 'destructive' })}>
 		{#if deleting}
-			<Spinner class="mr-2 h-4 w-4 animate-spin"/> Deleting...
+			<Spinner class="mr-2 h-4 w-4 animate-spin" /> Deleting...
 		{:else}
 			Delete Account
 		{/if}
@@ -43,7 +43,9 @@
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
 			<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-			<AlertDialog.Action onclick={deleteAccountHandler} disabled={deleting}>Continue</AlertDialog.Action>
+			<AlertDialog.Action onclick={deleteAccountHandler} disabled={deleting}
+				>Continue</AlertDialog.Action
+			>
 		</AlertDialog.Footer>
 	</AlertDialog.Content>
 </AlertDialog.Root>
