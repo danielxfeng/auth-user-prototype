@@ -125,7 +125,7 @@
 
 {#if friends.length > 0}
 	<h2 class="text-2xl font-semibold">Friends</h2>
-	<ul class="flex w-full max-w-xl flex-col gap-3 rounded-xl border border-border p-4">
+	<ul class="flex w-full max-w-2xl flex-col gap-3 rounded-xl border border-border p-4">
 		{#each friends as friend (friend.username)}
 			<li class="grid items-center gap-4" style="grid-template-columns: 40px minmax(0, 1fr) 20px;">
 				<Avatar.Root class="h-10 w-10">
