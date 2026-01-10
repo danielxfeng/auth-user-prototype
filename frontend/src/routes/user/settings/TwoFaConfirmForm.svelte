@@ -13,6 +13,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
+	import { fly } from 'svelte/transition';
 
 	const { twoFaSetupData, closeShowTwoFaForm } = $props();
 

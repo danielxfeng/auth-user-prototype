@@ -31,6 +31,7 @@
 		<Button
 			href={link.href}
 			variant="outline"
+			size="lg"
 			class={cn(
 				'flex-1',
 				isActive(link.href) &&

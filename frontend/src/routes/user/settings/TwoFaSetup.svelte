@@ -6,6 +6,7 @@
 	import DisableTwoFa from './DisableTwoFa.svelte';
 	import type { TwoFaSetupResponse } from '$lib/schemas/types';
 	import TwoFaConfirmForm from './TwoFaConfirmForm.svelte';
+	import { fly } from 'svelte/transition';
 
 	$: twoFaEnabled = $userStore.user?.twoFa ?? false;
 	let showTwoFaForm = false;
@@ -39,10 +40,11 @@
 		Enable 2FA
 	{/if}
 </Button>
-{#if showTwoFaForm}
-	{#if twoFaEnabled}
-		<DisableTwoFa closeShowTwoFaForm={() => (showTwoFaForm = false)} />
-	{:else if twoFaSetupData}
+{#if showTwoFaForm && twoFaEnabled}
+	<DisableTwoFa closeShowTwoFaForm={() => (showTwoFaForm = false)} />
+{/if}
+{#if showTwoFaForm && !twoFaEnabled && twoFaSetupData}
+	<div in:fly={{ y: -20, duration: 400 }} out:fly={{ y: 20, duration: 400 }} class="w-full">
 		<TwoFaConfirmForm closeShowTwoFaForm={() => (showTwoFaForm = false)} {twoFaSetupData} />
-	{/if}
+	</div>
 {/if}
