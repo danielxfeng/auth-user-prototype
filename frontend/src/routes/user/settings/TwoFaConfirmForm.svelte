@@ -66,7 +66,7 @@
 <div class="flex flex-col items-center justify-between gap-4 p-4 lg:flex-row">
 	<canvas bind:this={canvas} class="shrink-0"></canvas>
 
-	<div class="flex-1 w-full lg:w-1/2">
+	<div class="w-full flex-1 lg:w-1/2">
 		<form method="POST" use:enhance>
 			<Field.Set>
 				<Field.Group>
@@ -96,9 +96,9 @@
 				{/if}
 			</Button>
 
-      <Button type="button" variant="ghost" class="mt-4 w-full" onclick={closeShowTwoFaForm}>
-        Cancel
-      </Button>
+			<Button type="button" variant="ghost" class="mt-4 w-full" onclick={closeShowTwoFaForm}>
+				Cancel
+			</Button>
 		</form>
 	</div>
 </div>

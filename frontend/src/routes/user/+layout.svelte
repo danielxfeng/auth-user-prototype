@@ -11,7 +11,7 @@
 	{#if browser}
 		<CardTabs />
 	{/if}
-	<CardRoot class="w-full flex justify-center">
+	<CardRoot class="flex w-full justify-center">
 		{@render children()}
 	</CardRoot>
 </div>

@@ -15,7 +15,7 @@
 </script>
 
 {#if $userStore.user}
-	<div class="flex flex-col gap-8 px-6 flex-1">
+	<div class="flex flex-1 flex-col gap-8 px-6">
 		<TwoFaSetup />
 		<hr />
 		<ChangePasswordForm />

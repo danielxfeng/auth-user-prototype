@@ -15,16 +15,19 @@
 		{ href: '/user/register/', label: 'Register' }
 	];
 
-	$: links = $userStore.user ? loggedLinks : guestLinks;
+	const links = $derived(() => ($userStore.user ? loggedLinks : guestLinks));
+
+	const pathname = $derived(() => page.url.pathname);
 
 	const isActive = (href: string) => {
-		const normalizedHref = href.endsWith('/') ? href.slice(0, -1) : href;
-		return page.url.pathname === normalizedHref || page.url.pathname.startsWith(normalizedHref);
+		const normalized = href.endsWith('/') ? href.slice(0, -1) : href;
+		const current = pathname();
+		return current === normalized || current.startsWith(normalized + '/');
 	};
 </script>
 
 <ButtonGroup.Root class="flex w-full overflow-hidden">
-	{#each links as link (link.href)}
+	{#each links() as link (link.href)}
 		<Button
 			href={link.href}
 			variant="outline"
