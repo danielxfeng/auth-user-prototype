@@ -3,6 +3,7 @@
 	import { userStore } from '$lib/stores';
 	import * as ButtonGroup from '$lib/components/ui/button-group/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
+	import { cn } from '$lib/utils';
 
 	const loggedLinks = [
 		{ href: '/user/profile/', label: 'Profile' },
@@ -27,9 +28,11 @@
 		<Button
 			href={link.href}
 			variant="outline"
-			class={isActive(link.href)
-				? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
-				: ''}
+			class={cn(
+				'flex-1',
+				isActive(link.href) &&
+					'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
+			)}
 		>
 			{link.label}
 		</Button>

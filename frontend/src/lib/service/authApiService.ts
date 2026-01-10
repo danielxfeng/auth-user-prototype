@@ -75,8 +75,7 @@ const apiFetcher = async <TRequest, TResponse>(
 			const message =
 				typeof errorData?.error === 'string' ? errorData.error : 'Unknown error occurred';
 
-			if (!surpressAuthRedirect && response.status == 401)
-				window.location.href = '/user/reset';
+			if (!surpressAuthRedirect && response.status == 401) window.location.href = '/user/reset';
 
 			throw new AuthError(response.status as AuthErrorStatus, message);
 		} catch {
