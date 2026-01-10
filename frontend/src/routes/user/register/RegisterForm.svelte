@@ -27,7 +27,7 @@
 					toast.success('Registration successful! Redirecting to login...');
 
 					setTimeout(() => {
-						goto('/users/login/');
+						goto('/user/login/');
 					}, 2000);
 				} catch (error) {
 					if (error instanceof AuthError && error.status === 409) {

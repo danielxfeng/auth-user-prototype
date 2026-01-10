@@ -1,6 +1,7 @@
 import type {
 	AddNewFriendRequest,
 	CreateUserRequest,
+	GetFriendsResponse,
 	LoginUserByIdentifierRequest,
 	TwoFaChallengeRequest,
 	TwoFaConfirmRequest,
@@ -15,6 +16,7 @@ import type {
 import {
 	AddNewFriendRequestSchema,
 	CreateUserSchema,
+	GetFriendsResponseSchema,
 	LoginUserByIdentifierRequestSchema,
 	TwoFaChallengeRequestSchema,
 	TwoFaConfirmRequestSchema,
@@ -67,6 +69,23 @@ const apiFetcher = async <TRequest, TResponse>(
 		body: data ? JSON.stringify(validateRequest!.data) : undefined
 	});
 
+	if (!response.ok) {
+		try {
+			const errorData = await response.json();
+			const message =
+				typeof errorData?.error === 'string' ? errorData.error : 'Unknown error occurred';
+
+			if (!surpressAuthRedirect && response.status == 401)
+				window.location.href = '/user/reset';
+
+			throw new AuthError(response.status as AuthErrorStatus, message);
+		} catch {
+			throw new AuthError(response.status as AuthErrorStatus, 'Unknown error occurred');
+		}
+	}
+
+	if (!responseSchema) return undefined as unknown as TResponse;
+
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let responseData: any;
 
@@ -76,26 +95,11 @@ const apiFetcher = async <TRequest, TResponse>(
 		throw new AuthError(500, 'Invalid JSON response from server');
 	}
 
-	if (!response.ok) {
-		const message =
-			typeof responseData?.error === 'string' ? responseData.error : 'Unknown error occurred';
-
-		if (!surpressAuthRedirect && response.status == 401) {
-			window.location.href = '/user/reset';
-		}
-
-		throw new AuthError(response.status as AuthErrorStatus, message);
+	const validateResponse = responseSchema.safeParse(responseData);
+	if (!validateResponse.success) {
+		throw new AuthError(500, `Invalid response format: ${validateResponse.error.message}`);
 	}
-
-	if (responseSchema) {
-		const validateResponse = responseSchema.safeParse(responseData);
-		if (!validateResponse.success) {
-			throw new AuthError(500, `Invalid response format: ${validateResponse.error.message}`);
-		}
-		return validateResponse.data as TResponse;
-	}
-
-	return responseData as TResponse;
+	return validateResponse.data as TResponse;
 };
 
 export const registerUser = async (request: CreateUserRequest): Promise<void> => {
@@ -227,13 +231,13 @@ export const getAllUsers = async (): Promise<UsersResponse> => {
 	);
 };
 
-export const getFriends = async (): Promise<UsersResponse> => {
-	return await apiFetcher<undefined, UsersResponse>(
+export const getFriends = async (): Promise<GetFriendsResponse> => {
+	return await apiFetcher<undefined, GetFriendsResponse>(
 		'/friends',
 		'GET',
 		undefined,
 		undefined,
-		UsersResponseSchema
+		GetFriendsResponseSchema
 	);
 };
 

@@ -139,4 +139,8 @@ export const AddNewFriendRequestSchema = z.object({
 	userId: z.int()
 });
 
+export const AddNewFriendFormSchema = z.object({
+	username: usernameSchema
+});
+
 export const GetFriendsResponseSchema = z.array(FriendResponseSchema);

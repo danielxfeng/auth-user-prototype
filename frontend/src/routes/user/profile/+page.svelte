@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import ProfileTitle from './ProfileTitle.svelte';
+	import Friends from './Friends.svelte';
 
 	onMount(() => {
 		if (!$userStore.user) {
@@ -12,8 +13,8 @@
 </script>
 
 {#if $userStore.user}
-	<div class="px-6">
+	<div class="flex flex-col gap-8 px-6">
 		<ProfileTitle />
-		<p></p>
+		<Friends />
 	</div>
 {/if}
