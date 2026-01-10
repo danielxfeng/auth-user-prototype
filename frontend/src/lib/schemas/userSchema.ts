@@ -45,6 +45,26 @@ export const UpdateUserPasswordRequestSchema = z.object({
 	newPassword: passwordSchema
 });
 
+export const UpdateUserPasswordFormSchema = z
+	.object({
+		...UpdateUserPasswordRequestSchema.shape,
+		confirmNewPassword: z.string().trim()
+	})
+	.refine(
+		(data) => data.newPassword === data.confirmNewPassword,
+		{
+			message: 'New passwords do not match',
+			path: ['confirmNewPassword']
+		}
+	)
+	.refine(
+		(data) => data.oldPassword !== data.newPassword,
+		{
+			message: 'New password must be different from old password',
+			path: ['newPassword']
+		}
+	);
+
 export const LoginUserRequestSchema = z.object({
 	username: usernameSchema,
 	password: passwordSchema

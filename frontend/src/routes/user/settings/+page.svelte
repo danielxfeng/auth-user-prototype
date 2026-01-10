@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import DeleteAccount from './DeleteAccount.svelte';
 	import Logout from './Logout.svelte';
+	import ChangePasswordForm from './ChangePasswordForm.svelte';
 
 	onMount(() => {
 		if (!$userStore.user) {

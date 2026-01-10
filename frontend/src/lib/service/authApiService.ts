@@ -154,7 +154,8 @@ export const updatePassword = async (
 		'PUT',
 		request,
 		UpdateUserPasswordRequestSchema,
-		UserWithTokenResponseSchema
+		UserWithTokenResponseSchema,
+		true
 	);
 };
 
