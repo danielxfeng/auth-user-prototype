@@ -127,3 +127,28 @@
 		@apply m-0 min-h-dvh min-w-full p-0;
 	}
 }
+
+@theme {
+	--animate-enter: enter 0.8s ease-in-out;
+	--animate-enter-soft: enter-soft 1.2s ease-in-out;
+
+	@keyframes enter {
+		from {
+			opacity: 0;
+			transform: translateY(10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	@keyframes enter-soft {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+}
