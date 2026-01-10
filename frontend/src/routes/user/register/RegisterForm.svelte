@@ -10,7 +10,6 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
-	import { resetMode } from 'mode-watcher';
 
 	const { form, constraints, errors, enhance, submitting, reset } = superForm(
 		defaults(zod4(CreateUserFormSchema)),
