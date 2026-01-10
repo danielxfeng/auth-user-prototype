@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import DeleteAccount from './DeleteAccount.svelte';
+	import Logout from './Logout.svelte';
 
 	onMount(() => {
 		if (!$userStore.user) {
