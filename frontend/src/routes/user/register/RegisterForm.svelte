@@ -43,90 +43,88 @@
 	);
 </script>
 
+<form method="POST" use:enhance>
+	<Field.Set>
+		<Field.Legend>Register</Field.Legend>
+		<Field.Description>Create a new account by filling out the information below.</Field.Description
+		>
 
-	<form method="POST" use:enhance>
-		<Field.Set>
-			<Field.Legend>Register</Field.Legend>
-			<Field.Description
-				>Create a new account by filling out the information below.</Field.Description
-			>
+		<Field.Group>
+			<Field.Field>
+				<Field.Label for="username">Username</Field.Label>
+				<Input
+					id="username"
+					autocomplete="off"
+					name="username"
+					placeholder="Your username"
+					bind:value={$form.username}
+					aria-invalid={$errors.username ? 'true' : undefined}
+					{...$constraints.username}
+				/>
+				{#if $errors.username}
+					<Field.Error>{$errors.username}</Field.Error>
+				{/if}
+			</Field.Field>
 
-			<Field.Group>
-				<Field.Field>
-					<Field.Label for="username">Username</Field.Label>
-					<Input
-						id="username"
-						autocomplete="off"
-						name="username"
-						placeholder="Your username"
-						bind:value={$form.username}
-						aria-invalid={$errors.username ? 'true' : undefined}
-						{...$constraints.username}
-					/>
-					{#if $errors.username}
-						<Field.Error>{$errors.username}</Field.Error>
-					{/if}
-				</Field.Field>
+			<Field.Field>
+				<Field.Label for="email">Email</Field.Label>
+				<Input
+					id="email"
+					type="email"
+					autocomplete="off"
+					name="email"
+					placeholder="Your email"
+					bind:value={$form.email}
+					aria-invalid={$errors.email ? 'true' : undefined}
+					{...$constraints.email}
+				/>
+				{#if $errors.email}
+					<Field.Error>{$errors.email}</Field.Error>
+				{/if}
+			</Field.Field>
 
-				<Field.Field>
-					<Field.Label for="email">Email</Field.Label>
-					<Input
-						id="email"
-						type="email"
-						autocomplete="off"
-						name="email"
-						placeholder="Your email"
-						bind:value={$form.email}
-						aria-invalid={$errors.email ? 'true' : undefined}
-						{...$constraints.email}
-					/>
-					{#if $errors.email}
-						<Field.Error>{$errors.email}</Field.Error>
-					{/if}
-				</Field.Field>
+			<Field.Field>
+				<Field.Label for="password">Password</Field.Label>
+				<Input
+					id="password"
+					type="password"
+					autocomplete="off"
+					name="password"
+					placeholder="Your password"
+					bind:value={$form.password}
+					aria-invalid={$errors.password ? 'true' : undefined}
+					{...$constraints.password}
+				/>
+				{#if $errors.password}
+					<Field.Error>{$errors.password}</Field.Error>
+				{/if}
+			</Field.Field>
 
-				<Field.Field>
-					<Field.Label for="password">Password</Field.Label>
-					<Input
-						id="password"
-						type="password"
-						autocomplete="off"
-						name="password"
-						placeholder="Your password"
-						bind:value={$form.password}
-						aria-invalid={$errors.password ? 'true' : undefined}
-						{...$constraints.password}
-					/>
-					{#if $errors.password}
-						<Field.Error>{$errors.password}</Field.Error>
-					{/if}
-				</Field.Field>
+			<Field.Field>
+				<Field.Label for="confirmPassword">Confirm Password</Field.Label>
+				<Input
+					id="confirmPassword"
+					type="password"
+					autocomplete="off"
+					name="confirmPassword"
+					placeholder="Confirm your password"
+					bind:value={$form.confirmPassword}
+					aria-invalid={$errors.confirmPassword ? 'true' : undefined}
+					{...$constraints.confirmPassword}
+				/>
+				{#if $errors.confirmPassword}
+					<Field.Error>{$errors.confirmPassword}</Field.Error>
+				{/if}
+			</Field.Field>
+		</Field.Group>
+	</Field.Set>
 
-				<Field.Field>
-					<Field.Label for="confirmPassword">Confirm Password</Field.Label>
-					<Input
-						id="confirmPassword"
-						type="password"
-						autocomplete="off"
-						name="confirmPassword"
-						placeholder="Confirm your password"
-						bind:value={$form.confirmPassword}
-						aria-invalid={$errors.confirmPassword ? 'true' : undefined}
-						{...$constraints.confirmPassword}
-					/>
-					{#if $errors.confirmPassword}
-						<Field.Error>{$errors.confirmPassword}</Field.Error>
-					{/if}
-				</Field.Field>
-			</Field.Group>
-		</Field.Set>
-
-		<Button type="submit" disabled={$submitting} class="mt-6 w-full">
-			{#if $submitting}
-				<Spinner class="mr-2 h-4 w-4 animate-spin" />
-				Submitting…
-			{:else}
-				Submit
-			{/if}
-		</Button>
-	</form>
+	<Button type="submit" disabled={$submitting} class="mt-6 w-full">
+		{#if $submitting}
+			<Spinner class="mr-2 h-4 w-4 animate-spin" />
+			Submitting…
+		{:else}
+			Submit
+		{/if}
+	</Button>
+</form>
