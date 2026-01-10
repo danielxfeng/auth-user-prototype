@@ -2,8 +2,14 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
+	import { onMount } from 'svelte';
+	import { userStore } from '$lib/stores';
 
 	let { children } = $props();
+
+	onMount(() => {
+		userStore.hydrate();
+	});
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
