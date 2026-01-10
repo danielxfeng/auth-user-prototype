@@ -65,9 +65,7 @@ func SetupRouter(logger *slog.Logger) *gin.Engine {
 // @BasePath /api
 func main() {
 	// config
-	if err := godotenv.Load(); err != nil {
-		util.Logger.Warn("no .env file found", "err", err)
-	}
+	_ = godotenv.Load()
 
 	config.LoadConfig()
 
