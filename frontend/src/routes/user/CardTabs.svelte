@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { userStore } from '$lib/stores';
-	import { cn } from '$lib/utils';
+	import * as ButtonGroup from '$lib/components/ui/button-group/index.js';
+	import { Button } from '$lib/components/ui/button/index.js';
 
 	const loggedLinks = [
 		{ href: '/profile/', label: 'Profile' },
-		{ href: '/settings/', label: 'Settings' }
+		{ href: '/settings/', label: 'Settings' },
+		{ href: '/friends/', label: 'Friends' }
 	];
 
 	const guestLinks = [
@@ -19,16 +21,10 @@
 		page.url.pathname === href || page.url.pathname.startsWith(href);
 </script>
 
-<div class="flex w-full items-center justify-center">
+<ButtonGroup.Root class="flex w-full overflow-hidden">
 	{#each links as link (link.href)}
-		<a
-			href={link.href}
-			class={cn(
-				'px-4 py-2 text-sm font-medium first:rounded-tl-lg last:rounded-tr-lg',
-				isActive(link.href) && 'bg-accent text-primary'
-			)}
-		>
+		<Button href={link.href} variant={isActive(link.href) ? 'default' : 'outline'}>
 			{link.label}
-		</a>
+		</Button>
 	{/each}
-</div>
+</ButtonGroup.Root>

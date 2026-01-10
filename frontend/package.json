@@ -20,6 +20,7 @@
 	"devDependencies": {
 		"@eslint/compat": "^1.4.0",
 		"@eslint/js": "^9.39.1",
+		"@internationalized/date": "^3.10.1",
 		"@lucide/svelte": "^0.561.0",
 		"@playwright/test": "^1.57.0",
 		"@sveltejs/adapter-auto": "^7.0.0",
@@ -28,6 +29,7 @@
 		"@tailwindcss/vite": "^4.1.17",
 		"@types/node": "^24",
 		"@vitest/browser-playwright": "^4.0.15",
+		"bits-ui": "^2.15.4",
 		"eslint": "^9.39.1",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.13.1",
