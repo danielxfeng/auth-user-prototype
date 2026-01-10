@@ -10,7 +10,7 @@
 		</h1>
 
 		{#if browser}
-      <NavLinks />
-    {/if}
+			<NavLinks />
+		{/if}
 	</div>
 </div>
