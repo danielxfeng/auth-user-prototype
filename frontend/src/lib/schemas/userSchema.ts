@@ -74,6 +74,10 @@ export const UserWithTokenResponseSchema = z.object({
 	token: z.string()
 });
 
+export const UpdateUserAvatarFormSchema = z.object({
+	avatar: z.url().trim().nullable()
+});
+
 export const UpdateUserRequestSchema = UserSchema;
 
 export const UserWithoutTokenResponseSchema = z.object({

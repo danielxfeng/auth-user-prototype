@@ -4,12 +4,11 @@
 	import { userStore } from '$lib/stores';
 	import { goto } from '$app/navigation';
 
-  onMount(() => {
-    if ($userStore.user) {
-      goto('/user/profile', { replaceState: true });
-    }
-  });
-  
+	onMount(() => {
+		if ($userStore.user) {
+			goto('/user/profile', { replaceState: true });
+		}
+	});
 </script>
 
 <div class="px-6">

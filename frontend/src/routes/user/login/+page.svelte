@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { on } from 'events';
 	import LoginForm from './LoginForm.svelte';
 	import { onMount } from 'svelte';
 	import { userStore } from '$lib/stores';
@@ -16,7 +15,6 @@
 			goto('/user/profile', { replaceState: true });
 		}
 	});
-	
 </script>
 
 <div class="px-6">
