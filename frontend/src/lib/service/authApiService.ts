@@ -29,8 +29,7 @@ import {
 import { STORAGE_TOKEN } from '$lib/stores/userStore.js';
 import * as z from 'zod';
 import { AuthError, type AuthErrorStatus } from '../errors/error.js';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/users';
+import { cfg } from '$lib/config/config.js';
 
 type MethodType = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
@@ -59,7 +58,7 @@ const apiFetcher = async <TRequest, TResponse>(
 		// Ignore localStorage errors
 	}
 
-	const response = await fetch(`${API_BASE_URL}${path}`, {
+	const response = await fetch(`${cfg.apiBaseUrl}${path}`, {
 		method,
 		headers: {
 			'Content-Type': 'application/json',

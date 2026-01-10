@@ -5,25 +5,33 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 
 	const loggedLinks = [
-		{ href: '/profile/', label: 'Profile' },
-		{ href: '/settings/', label: 'Settings' },
-		{ href: '/friends/', label: 'Friends' }
+		{ href: '/user/profile/', label: 'Profile' },
+		{ href: '/user/settings/', label: 'Settings' },
+		{ href: '/user/friends/', label: 'Friends' }
 	];
 
 	const guestLinks = [
-		{ href: '/login/', label: 'Login' },
-		{ href: '/register/', label: 'Register' }
+		{ href: '/user/login/', label: 'Login' },
+		{ href: '/user/register/', label: 'Register' }
 	];
 
 	$: links = $userStore.user ? loggedLinks : guestLinks;
 
-	const isActive = (href: string) =>
-		page.url.pathname === href || page.url.pathname.startsWith(href);
+	const isActive = (href: string) => {
+		const normalizedHref = href.endsWith('/') ? href.slice(0, -1) : href;
+		return page.url.pathname === normalizedHref || page.url.pathname.startsWith(normalizedHref);
+	};
 </script>
 
 <ButtonGroup.Root class="flex w-full overflow-hidden">
 	{#each links as link (link.href)}
-		<Button href={link.href} variant={isActive(link.href) ? 'default' : 'outline'}>
+		<Button
+			href={link.href}
+			variant="outline"
+			class={isActive(link.href)
+				? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
+				: ''}
+		>
 			{link.label}
 		</Button>
 	{/each}

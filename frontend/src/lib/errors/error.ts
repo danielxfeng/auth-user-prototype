@@ -1,4 +1,4 @@
-export type AuthErrorStatus = 400 | 401 | 404 | 428 | 429 | 500;
+export type AuthErrorStatus = 400 | 401 | 404 | 409 | 428 | 429 | 500;
 
 export class AuthError extends Error {
 	readonly status: AuthErrorStatus;

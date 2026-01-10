@@ -30,6 +30,16 @@ export const CreateUserSchema = z.object({
 	password: passwordSchema
 });
 
+export const CreateUserFormSchema = z
+	.object({
+		...CreateUserSchema.shape,
+		confirmPassword: z.string().trim()
+	})
+	.refine((data) => data.password === data.confirmPassword, {
+		message: 'Passwords do not match',
+		path: ['confirmPassword']
+	});
+
 export const UpdateUserPasswordRequestSchema = z.object({
 	oldPassword: passwordSchema,
 	newPassword: passwordSchema
