@@ -264,15 +264,15 @@ func TestCreateNewUserFromGoogleInfo(t *testing.T) {
 		if user.Email != "new@g.com" {
 			t.Errorf("expected email new@g.com, got %s", user.Email)
 		}
-		if user.Username != "google_newg1" {
-			t.Errorf("expected username google_newg1, got %s", user.Username)
+		if user.Username != "G_newg1" {
+			t.Errorf("expected username G_newg1, got %s", user.Username)
 		}
 	})
 
 	t.Run("DuplicateUsernameRetry", func(t *testing.T) {
 		// Create a user that conflicts with the default google username
 		_, _ = svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User:     dto.User{UserName: dto.UserName{Username: "google_gdup"}, Email: "existing@e.com"},
+			User:     dto.User{UserName: dto.UserName{Username: "G_gdup"}, Email: "existing@e.com"},
 			Password: dto.Password{Password: "p"},
 		})
 
@@ -286,7 +286,7 @@ func TestCreateNewUserFromGoogleInfo(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		// Should have generated a random UUID based username
-		if user.Username == "google_gdup" {
+		if user.Username == "G_gdup" {
 			t.Error("expected random username on collision")
 		}
 		if user.Email != "unique@g.com" {

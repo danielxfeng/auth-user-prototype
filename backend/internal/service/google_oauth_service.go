@@ -176,7 +176,11 @@ func (s *UserService) createNewUserFromGoogleInfo(ctx context.Context, googleUse
 		}
 		username = "G_" + uuidUsername.String()
 	} else {
-		username = "G_" + googleUserInfo.ID[:8]
+		idPrefix := googleUserInfo.ID
+		if len(idPrefix) > 8 {
+			idPrefix = idPrefix[:8]
+		}
+		username = "G_" + idPrefix
 	}
 
 	modelUser := model.User{
