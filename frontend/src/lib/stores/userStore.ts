@@ -58,6 +58,15 @@ export const userStore = {
 		saveToLocalStorage(nextState);
 	},
 
+	updateUser(user: UserWithoutTokenResponse) {
+		const nextState: UserStore = {
+			user,
+			token: getFromLocalStorage().token
+		};
+		set(nextState);
+		saveToLocalStorage(nextState);
+	},
+
 	logout() {
 		set({ user: null, token: null });
 		removeFromLocalStorage();

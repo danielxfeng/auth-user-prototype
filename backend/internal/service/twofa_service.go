@@ -54,6 +54,7 @@ func (s *UserService) StartTwoFaSetup(ctx context.Context, userID uint) (*dto.Tw
 	return &dto.TwoFASetupResponse{
 		TwoFASecret: secret.Secret(),
 		SetupToken:  setupToken,
+		TwoFaUri:    secret.URL(),
 	}, nil
 }
 

@@ -11,7 +11,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
 
-	const { form, constraints, errors, enhance, submitting } = superForm(
+	const { form, constraints, errors, enhance, submitting, reset } = superForm(
 		defaults(zod4(CreateUserFormSchema)),
 		{
 			SPA: true,
@@ -24,11 +24,12 @@
 					void confirmPassword;
 
 					await registerUser(payload);
+					reset();
 					toast.success('Registration successful! Redirecting to login...');
 
 					setTimeout(() => {
-						goto('/users/login/');
-					}, 2000);
+						goto('/user/login');
+					}, 0);
 				} catch (error) {
 					if (error instanceof AuthError && error.status === 409) {
 						setError(form, 'username', 'Username or Email already taken');
@@ -37,6 +38,9 @@
 					}
 
 					toast.error('Registration failed, please try again later.');
+				} finally {
+					form.data.password = '';
+					form.data.confirmPassword = '';
 				}
 			}
 		}

@@ -12,6 +12,7 @@
 	import { Spinner } from '$lib/components/ui/spinner';
 	import { cfg } from '$lib/config/config';
 	import { userStore } from '$lib/stores';
+	import type { UserWithTokenResponse } from '$lib/schemas/types';
 
 	let { goto2fa } = $props();
 
@@ -25,19 +26,19 @@
 
 				try {
 					const user = await loginUser(form.data);
-
-					if (user === '2FA_REQUIRED') {
-						goto2fa();
+					if ('message' in user && user.message === '2FA_REQUIRED') {
+						toast.info('Please enter your 2FA code to continue.');
+						goto2fa(user.sessionToken);
 						return;
 					}
 
 					toast.success('Login successful! Redirecting to home page...');
 
-					userStore.login(user);
+					userStore.login(user as UserWithTokenResponse);
 
 					setTimeout(() => {
 						goto('/');
-					}, 2000);
+					}, 0);
 				} catch (error) {
 					if (error instanceof AuthError && error.status === 401) {
 						setError(form, 'identifier', 'Invalid username or email');
@@ -46,6 +47,8 @@
 					}
 
 					toast.error('Login failed, please try again later.');
+				} finally {
+					form.data.password = '';
 				}
 			}
 		}

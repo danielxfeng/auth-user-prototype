@@ -27,6 +27,7 @@ func UsersRouter(r *gin.RouterGroup) {
 	auth.GET("/me", h.GetLoggedUserProfileHandler)
 	auth.PUT("/password", middleware.ValidateBody[dto.UpdateUserPasswordRequest](), h.UpdateLoggedUserPasswordHandler)
 	auth.PUT("/me", middleware.ValidateBody[dto.UpdateUserRequest](), h.UpdateLoggedUserProfileHandler)
+	auth.DELETE("/logout", h.LogoutUserHandler)
 	auth.DELETE("/me", h.DeleteLoggedUserHandler)
 
 	auth.POST("/2fa/setup", h.StartTwoFaSetupHandler)

@@ -239,6 +239,7 @@ type TwoFAChallengeRequest struct {
 type TwoFASetupResponse struct {
 	TwoFASecret string `json:"twoFaSecret" validate:"required"`
 	SetupToken  string `json:"setupToken" validate:"required"`
+	TwoFaUri    string `json:"twoFaUri" validate:"required"`
 }
 
 type TwoFAPendingUserResponse struct {

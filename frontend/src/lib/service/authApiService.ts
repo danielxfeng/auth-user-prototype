@@ -1,10 +1,12 @@
 import type {
 	AddNewFriendRequest,
 	CreateUserRequest,
+	GetFriendsResponse,
 	LoginUserByIdentifierRequest,
 	TwoFaChallengeRequest,
 	TwoFaConfirmRequest,
 	TwoFaDisableRequest,
+	TwoFaPendingUserResponse,
 	TwoFaSetupResponse,
 	UpdateUserPasswordRequest,
 	UpdateUserRequest,
@@ -15,10 +17,12 @@ import type {
 import {
 	AddNewFriendRequestSchema,
 	CreateUserSchema,
+	GetFriendsResponseSchema,
 	LoginUserByIdentifierRequestSchema,
 	TwoFaChallengeRequestSchema,
 	TwoFaConfirmRequestSchema,
 	TwoFaDisableRequestSchema,
+	TwoFaPendingUserResponseSchema,
 	TwoFaSetupResponseSchema,
 	UpdateUserPasswordRequestSchema,
 	UpdateUserRequestSchema,
@@ -67,6 +71,24 @@ const apiFetcher = async <TRequest, TResponse>(
 		body: data ? JSON.stringify(validateRequest!.data) : undefined
 	});
 
+	if (response.status === 428) return (await response.json()) as TResponse;
+
+	if (!response.ok) {
+		try {
+			const errorData = await response.json();
+			const message =
+				typeof errorData?.error === 'string' ? errorData.error : 'Unknown error occurred';
+
+			if (!surpressAuthRedirect && response.status == 401) window.location.href = '/user/reset';
+
+			throw new AuthError(response.status as AuthErrorStatus, message);
+		} catch {
+			throw new AuthError(response.status as AuthErrorStatus, 'Unknown error occurred');
+		}
+	}
+
+	if (!responseSchema) return undefined as unknown as TResponse;
+
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let responseData: any;
 
@@ -76,26 +98,11 @@ const apiFetcher = async <TRequest, TResponse>(
 		throw new AuthError(500, 'Invalid JSON response from server');
 	}
 
-	if (!response.ok) {
-		const message =
-			typeof responseData?.error === 'string' ? responseData.error : 'Unknown error occurred';
-
-		if (!surpressAuthRedirect && response.status == 401) {
-			window.location.href = '/login';
-		}
-
-		throw new AuthError(response.status as AuthErrorStatus, message);
+	const validateResponse = responseSchema.safeParse(responseData);
+	if (!validateResponse.success) {
+		throw new AuthError(500, `Invalid response format: ${validateResponse.error.message}`);
 	}
-
-	if (responseSchema) {
-		const validateResponse = responseSchema.safeParse(responseData);
-		if (!validateResponse.success) {
-			throw new AuthError(500, `Invalid response format: ${validateResponse.error.message}`);
-		}
-		return validateResponse.data as TResponse;
-	}
-
-	return responseData as TResponse;
+	return validateResponse.data as TResponse;
 };
 
 export const registerUser = async (request: CreateUserRequest): Promise<void> => {
@@ -110,23 +117,28 @@ export const registerUser = async (request: CreateUserRequest): Promise<void> =>
 
 export const loginUser = async (
 	request: LoginUserByIdentifierRequest
-): Promise<UserWithTokenResponse | '2FA_REQUIRED'> => {
-	try {
-		const response = await apiFetcher<LoginUserByIdentifierRequest, UserWithTokenResponse>(
-			'/loginByIdentifier',
-			'POST',
-			request,
-			LoginUserByIdentifierRequestSchema,
-			UserWithTokenResponseSchema,
-			true
-		);
-		return response;
-	} catch (error: unknown) {
-		if (error instanceof AuthError && error.status === 428) {
-			return '2FA_REQUIRED';
+): Promise<UserWithTokenResponse | TwoFaPendingUserResponse> => {
+	const response = await apiFetcher<
+		LoginUserByIdentifierRequest,
+		UserWithTokenResponse | TwoFaPendingUserResponse
+	>(
+		'/loginByIdentifier',
+		'POST',
+		request,
+		LoginUserByIdentifierRequestSchema,
+		UserWithTokenResponseSchema,
+		true
+	);
+
+	if ('message' in response && response.message === '2FA_REQUIRED') {
+		const validated = TwoFaPendingUserResponseSchema.safeParse(response);
+		if (!validated.success) {
+			throw new AuthError(500, `Invalid response format: ${validated.error.message}`);
 		}
-		throw error;
+		return validated.data;
 	}
+
+	return response;
 };
 
 export const logoutUser = async (): Promise<void> => {
@@ -151,7 +163,8 @@ export const updatePassword = async (
 		'PUT',
 		request,
 		UpdateUserPasswordRequestSchema,
-		UserWithTokenResponseSchema
+		UserWithTokenResponseSchema,
+		true
 	);
 };
 
@@ -227,13 +240,13 @@ export const getAllUsers = async (): Promise<UsersResponse> => {
 	);
 };
 
-export const getFriends = async (): Promise<UsersResponse> => {
-	return await apiFetcher<undefined, UsersResponse>(
+export const getFriends = async (): Promise<GetFriendsResponse> => {
+	return await apiFetcher<undefined, GetFriendsResponse>(
 		'/friends',
 		'GET',
 		undefined,
 		undefined,
-		UsersResponseSchema
+		GetFriendsResponseSchema
 	);
 };
 

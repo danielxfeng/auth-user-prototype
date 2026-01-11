@@ -45,6 +45,20 @@ export const UpdateUserPasswordRequestSchema = z.object({
 	newPassword: passwordSchema
 });
 
+export const UpdateUserPasswordFormSchema = z
+	.object({
+		...UpdateUserPasswordRequestSchema.shape,
+		confirmNewPassword: z.string().trim()
+	})
+	.refine((data) => data.newPassword === data.confirmNewPassword, {
+		message: 'New passwords do not match',
+		path: ['confirmNewPassword']
+	})
+	.refine((data) => data.oldPassword !== data.newPassword, {
+		message: 'New password must be different from old password',
+		path: ['newPassword']
+	});
+
 export const LoginUserRequestSchema = z.object({
 	username: usernameSchema,
 	password: passwordSchema
@@ -74,6 +88,10 @@ export const UserWithTokenResponseSchema = z.object({
 	token: z.string()
 });
 
+export const UpdateUserAvatarFormSchema = z.object({
+	avatar: z.url().trim().nullable()
+});
+
 export const UpdateUserRequestSchema = UserSchema;
 
 export const UserWithoutTokenResponseSchema = z.object({
@@ -98,7 +116,12 @@ export const UsersResponseSchema = z.array(SimpleUserResponseSchema);
 // 2FA setup
 export const TwoFaSetupResponseSchema = z.object({
 	twoFaSecret: z.string(),
-	setupToken: z.string()
+	setupToken: z.string(),
+	twoFaUri: z.string()
+});
+
+export const TwoFaConfirmFormSchema = z.object({
+	twoFaCode: z.string().min(6).max(6)
 });
 
 // 2FA confirm
@@ -133,6 +156,10 @@ export const FriendResponseSchema = z.object({
 
 export const AddNewFriendRequestSchema = z.object({
 	userId: z.int()
+});
+
+export const AddNewFriendFormSchema = z.object({
+	username: usernameSchema
 });
 
 export const GetFriendsResponseSchema = z.array(FriendResponseSchema);
