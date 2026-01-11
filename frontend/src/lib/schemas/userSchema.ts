@@ -136,7 +136,8 @@ export const TwoFaDisableRequestSchema = z.object({
 });
 
 export const TwoFaChallengeRequestSchema = z.object({
-	twoFaCode: z.string()
+	twoFaCode: z.string(),
+	sessionToken: z.string()
 });
 
 export const TwoFaPendingUserResponseSchema = z.object({

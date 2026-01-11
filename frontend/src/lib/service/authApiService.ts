@@ -6,6 +6,7 @@ import type {
 	TwoFaChallengeRequest,
 	TwoFaConfirmRequest,
 	TwoFaDisableRequest,
+	TwoFaPendingUserResponse,
 	TwoFaSetupResponse,
 	UpdateUserPasswordRequest,
 	UpdateUserRequest,
@@ -21,6 +22,7 @@ import {
 	TwoFaChallengeRequestSchema,
 	TwoFaConfirmRequestSchema,
 	TwoFaDisableRequestSchema,
+	TwoFaPendingUserResponseSchema,
 	TwoFaSetupResponseSchema,
 	UpdateUserPasswordRequestSchema,
 	UpdateUserRequestSchema,
@@ -69,6 +71,8 @@ const apiFetcher = async <TRequest, TResponse>(
 		body: data ? JSON.stringify(validateRequest!.data) : undefined
 	});
 
+	if (response.status === 428) return (await response.json()) as TResponse;
+
 	if (!response.ok) {
 		try {
 			const errorData = await response.json();
@@ -113,23 +117,28 @@ export const registerUser = async (request: CreateUserRequest): Promise<void> =>
 
 export const loginUser = async (
 	request: LoginUserByIdentifierRequest
-): Promise<UserWithTokenResponse | '2FA_REQUIRED'> => {
-	try {
-		const response = await apiFetcher<LoginUserByIdentifierRequest, UserWithTokenResponse>(
-			'/loginByIdentifier',
-			'POST',
-			request,
-			LoginUserByIdentifierRequestSchema,
-			UserWithTokenResponseSchema,
-			true
-		);
-		return response;
-	} catch (error: unknown) {
-		if (error instanceof AuthError && error.status === 428) {
-			return '2FA_REQUIRED';
+): Promise<UserWithTokenResponse | TwoFaPendingUserResponse> => {
+	const response = await apiFetcher<
+		LoginUserByIdentifierRequest,
+		UserWithTokenResponse | TwoFaPendingUserResponse
+	>(
+		'/loginByIdentifier',
+		'POST',
+		request,
+		LoginUserByIdentifierRequestSchema,
+		UserWithTokenResponseSchema,
+		true
+	);
+
+	if ('message' in response && response.message === '2FA_REQUIRED') {
+		const validated = TwoFaPendingUserResponseSchema.safeParse(response);
+		if (!validated.success) {
+			throw new AuthError(500, `Invalid response format: ${validated.error.message}`);
 		}
-		throw error;
+		return validated.data;
 	}
+
+	return response;
 };
 
 export const logoutUser = async (): Promise<void> => {
