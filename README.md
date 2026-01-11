@@ -9,6 +9,11 @@ I also implemented a minimal **frontend prototype** using **Svelte** for learnin
 
 ---
 
+## Demo
+
+- Frontend: [https://auth-demo-sage.vercel.app/](https://auth-demo-sage.vercel.app/)
+- Backend Swagger: [https://auth-demo-x0sd.onrender.com/api/docs/index.html](https://auth-demo-x0sd.onrender.com/api/docs/index.html)
+
 ## Features
 
 Currently supported features include:
