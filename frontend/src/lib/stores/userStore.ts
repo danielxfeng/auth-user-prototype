@@ -17,6 +17,12 @@ const saveToLocalStorage = (state: UserStore): void => {
 	localStorage.setItem(STORAGE_TOKEN, state.token);
 };
 
+const saveTokenToLocalStorage = (token: string): void => {
+	if (typeof window === 'undefined') return;
+
+	localStorage.setItem(STORAGE_TOKEN, token);
+};
+
 const removeFromLocalStorage = () => {
 	if (typeof window === 'undefined') return;
 
@@ -56,6 +62,11 @@ export const userStore = {
 		};
 		set(nextState);
 		saveToLocalStorage(nextState);
+	},
+
+	// This is used only for Oauth callback
+	saveToken(token: string) {
+		saveTokenToLocalStorage(token);
 	},
 
 	updateUser(user: UserWithoutTokenResponse) {
