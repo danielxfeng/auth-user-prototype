@@ -25,13 +25,13 @@
 				void confirmNewPassword;
 
 				try {
-					const user = await updatePassword(payload);
+					await updatePassword(payload);
 
-					toast.success('Password updated successfully! Redirecting to home page...');
-					userStore.login(user);
+					toast.success('Password updated successfully! Redirecting to login page...');
+					userStore.logout();
 
 					setTimeout(() => {
-						goto('/');
+						goto('/user/login');
 					}, 0);
 				} catch (error) {
 					if (error instanceof AuthError && error.status === 401) {
@@ -40,7 +40,7 @@
 					}
 
 					logger.error('Password update failed:', error);
-					toast.error('Login failed, please try again later.');
+					toast.error('Password update failed, please try again later.');
 				} finally {
 					form.data.oldPassword = '';
 					form.data.newPassword = '';

@@ -143,7 +143,7 @@
 
 				<span
 					title={friend.online ? 'Online' : 'Offline'}
-					class={cn('h-6 w-6 rounded-full', friend.online ? 'bg-green-500/20' : 'bg-gray-500/20')}
+					class={cn('h-6 w-6 rounded-full', friend.online ? 'bg-green-500/80' : 'bg-gray-500/80')}
 				></span>
 			</li>
 		{/each}

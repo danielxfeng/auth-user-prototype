@@ -184,9 +184,9 @@ func (s *UserService) UpdateUserProfile(ctx context.Context, userID uint, reques
 }
 
 func (s *UserService) DeleteUser(ctx context.Context, userID uint) error {
-	_, err := gorm.G[model.User](s.DB.Unscoped()).Where("id = ?", userID).Delete(ctx)
-	if err != nil {
-		return err
+	res := s.DB.WithContext(ctx).Unscoped().Delete(&model.User{}, userID)
+	if res.Error != nil {
+		return res.Error
 	}
 
 	return nil
