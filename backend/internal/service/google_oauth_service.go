@@ -46,7 +46,7 @@ func (s *UserService) GetGoogleOAuthURL(ctx context.Context) (string, error) {
 }
 
 func assembleFrontendRedirectURL(token *string, errMsg *string) string {
-	u, err := url.Parse(config.Cfg.FrontendUrl + "/oauth/google/callback")
+	u, err := url.Parse(config.Cfg.FrontendUrl + "/user/oauth-callback-google")
 	if err != nil {
 		util.Logger.Error("failed to parse frontend redirect url:", "err", err)
 		return "/unrecovered-error"
@@ -174,9 +174,13 @@ func (s *UserService) createNewUserFromGoogleInfo(ctx context.Context, googleUse
 		if err != nil {
 			return nil, middleware.NewAuthError(500, "failed to generate UUID for Google user")
 		}
-		username = "google_" + uuidUsername.String()
+		username = "G_" + uuidUsername.String()
 	} else {
-		username = "google_" + googleUserInfo.ID
+		idPrefix := googleUserInfo.ID
+		if len(idPrefix) > 8 {
+			idPrefix = idPrefix[:8]
+		}
+		username = "G_" + idPrefix
 	}
 
 	modelUser := model.User{
