@@ -13,6 +13,13 @@ I also implemented a minimal **frontend prototype** using **Svelte** for learnin
 
 - Frontend: [https://auth-demo-sage.vercel.app/](https://auth-demo-sage.vercel.app/)
 - Backend Swagger: [https://auth-demo-x0sd.onrender.com/api/docs/index.html](https://auth-demo-x0sd.onrender.com/api/docs/index.html)
+- Please wait for around 10 seconds and refresh the page when you see "backend is waking up" on frontend.
+
+
+
+https://github.com/user-attachments/assets/550b8a53-5775-47e8-8d4f-c42a7e174bf7
+
+
 
 ## Features
 
