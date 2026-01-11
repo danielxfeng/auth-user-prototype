@@ -109,9 +109,9 @@ func (s *UserService) updateHeartBeat(userID uint) {
 func (s *UserService) issueNewTokenForUser(ctx context.Context, userID uint, revokeAllTokens bool) (string, error) {
 
 	if revokeAllTokens {
-		_, err := gorm.G[model.Token](s.DB.Unscoped()).Where("user_id = ?", userID).Delete(ctx)
-		if err != nil {
-			return "", err
+		res := s.DB.WithContext(ctx).Exec("DELETE FROM tokens WHERE user_id = ?", userID)
+		if res.Error != nil {
+			return "", res.Error
 		}
 	}
 
