@@ -11,6 +11,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
+	import { logger } from '$lib/config/logger';
 
 	const { sessionToken } = $props();
 
@@ -42,6 +43,7 @@
 					}
 
 					toast.error('Login failed, please try again later.');
+					logger.error('2FA Login error:', error);
 				}
 			}
 		}

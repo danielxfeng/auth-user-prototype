@@ -7,6 +7,7 @@
 	import type { TwoFaSetupResponse } from '$lib/schemas/types';
 	import TwoFaConfirmForm from './TwoFaConfirmForm.svelte';
 	import { fly } from 'svelte/transition';
+	import { logger } from '$lib/config/logger';
 
 	$: twoFaEnabled = $userStore.user?.twoFa ?? false;
 	let showTwoFaForm = false;
@@ -15,7 +16,8 @@
 	const twoFaHandler = async () => {
 		try {
 			twoFaSetupData = await startTwoFaSetup();
-		} catch {
+		} catch (error) {
+			logger.error('Failed to start 2FA setup:', error);
 			toast.error('Failed to start 2FA setup, please try again later.');
 		}
 	};

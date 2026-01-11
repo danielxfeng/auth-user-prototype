@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { Button } from '$lib/components/ui/button';
 	import Spinner from '$lib/components/ui/spinner/spinner.svelte';
+	import { logger } from '$lib/config/logger';
 	import { logoutUser } from '$lib/service/authApiService';
 	import { userStore } from '$lib/stores';
 	import { toast } from 'svelte-sonner';
@@ -14,10 +15,11 @@
 			await logoutUser();
 
 			toast.success('Logged out successfully, redirecting to home page...');
-		} catch {
+		} catch (error) {
 			toast.warning(
 				'Failed to log out on server, try to log out locally, redirecting to home page...'
 			);
+			logger.error('Logout error:', error);
 		} finally {
 			userStore.logout();
 			logoutInProgress = false;

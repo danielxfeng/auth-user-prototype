@@ -37,6 +37,7 @@
 						return;
 					}
 
+					console.error('Registration error:', error);
 					toast.error('Registration failed, please try again later.');
 				} finally {
 					form.data.password = '';

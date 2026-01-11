@@ -11,6 +11,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
+	import { logger } from '$lib/config/logger';
 
 	const { form, constraints, errors, enhance, submitting } = superForm(
 		defaults(zod4(UpdateUserPasswordFormSchema)),
@@ -25,7 +26,6 @@
 
 				try {
 					const user = await updatePassword(payload);
-					console.log(user);
 
 					toast.success('Password updated successfully! Redirecting to home page...');
 					userStore.login(user);
@@ -34,12 +34,12 @@
 						goto('/');
 					}, 0);
 				} catch (error) {
-					console.error(error);
 					if (error instanceof AuthError && error.status === 401) {
 						setError(form, 'oldPassword', 'Invalid password');
 						return;
 					}
 
+					logger.error('Password update failed:', error);
 					toast.error('Login failed, please try again later.');
 				} finally {
 					form.data.oldPassword = '';

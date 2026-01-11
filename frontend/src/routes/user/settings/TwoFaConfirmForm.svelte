@@ -13,6 +13,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
+	import { logger } from '$lib/config/logger';
 
 	const { twoFaSetupData, closeShowTwoFaForm } = $props();
 
@@ -50,6 +51,7 @@
 						return;
 					}
 
+					logger.error('Enabling 2FA error:', error);
 					toast.error('Enabling 2FA failed, please try again later.');
 				} finally {
 					form.data.twoFaCode = '';

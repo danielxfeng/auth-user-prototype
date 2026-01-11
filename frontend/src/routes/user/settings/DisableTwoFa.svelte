@@ -10,6 +10,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
+	import { logger } from '$lib/config/logger';
 
 	const { closeShowTwoFaForm } = $props();
 
@@ -34,6 +35,7 @@
 						return;
 					}
 
+					logger.error('Disabling 2FA error:', error);
 					toast.error('Disabling 2FA failed, please try again later.');
 				} finally {
 					form.data.password = '';
