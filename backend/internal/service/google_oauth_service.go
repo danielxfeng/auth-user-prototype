@@ -174,9 +174,9 @@ func (s *UserService) createNewUserFromGoogleInfo(ctx context.Context, googleUse
 		if err != nil {
 			return nil, middleware.NewAuthError(500, "failed to generate UUID for Google user")
 		}
-		username = "google_" + uuidUsername.String()
+		username = "G_" + uuidUsername.String()
 	} else {
-		username = "google_" + googleUserInfo.ID
+		username = "G_" + googleUserInfo.ID[:8]
 	}
 
 	modelUser := model.User{

@@ -20,11 +20,11 @@
 			} catch {
 				toast.error('Failed to log in with Google OAuth, please try again.');
 				userStore.logout();
-				goto('/login', { replaceState: true });
+				goto('/user/login', { replaceState: true });
 			}
 		} else {
 			toast.error('Failed to log in with Google OAuth, please try again.');
-			goto('/login', { replaceState: true });
+			goto('/user/login', { replaceState: true });
 		}
 	});
 </script>
