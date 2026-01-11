@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { userStore } from '$lib/stores';
+	import { goto } from '$app/navigation';
 	import { defaults, setError, superForm } from 'sveltekit-superforms';
 	import { zod4 } from 'sveltekit-superforms/adapters';
 	import { TwoFaDisableRequestSchema } from '$lib/schemas/userSchema';
