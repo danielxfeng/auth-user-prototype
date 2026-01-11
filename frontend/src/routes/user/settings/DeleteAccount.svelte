@@ -6,6 +6,7 @@
 	import { buttonVariants } from '$lib/components/ui/button/button.svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 	import { Spinner } from '$lib/components/ui/spinner';
+	import { logger } from '$lib/config/logger';
 
 	let deleting = false;
 
@@ -17,7 +18,8 @@
 			toast.success('Account deleted successfully, navigating to home page...');
 
 			goto('/');
-		} catch {
+		} catch (error) {
+			logger.error('Failed to delete account:', error);
 			toast.error('Failed to delete account. Please try again.');
 		} finally {
 			deleting = false;

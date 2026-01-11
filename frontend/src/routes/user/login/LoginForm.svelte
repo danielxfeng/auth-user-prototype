@@ -13,6 +13,7 @@
 	import { cfg } from '$lib/config/config';
 	import { userStore } from '$lib/stores';
 	import type { UserWithTokenResponse } from '$lib/schemas/types';
+	import { logger } from '$lib/config/logger';
 
 	let { goto2fa } = $props();
 
@@ -47,6 +48,7 @@
 					}
 
 					toast.error('Login failed, please try again later.');
+					logger.error('Login error:', error);
 				} finally {
 					form.data.password = '';
 				}

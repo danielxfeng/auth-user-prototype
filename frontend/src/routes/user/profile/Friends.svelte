@@ -14,6 +14,7 @@
 	import { defaults, setError, superForm } from 'sveltekit-superforms';
 	import { zod4 } from 'sveltekit-superforms/adapters';
 	import { userStore } from '$lib/stores';
+	import { logger } from '$lib/config/logger';
 
 	let friends: GetFriendsResponse = [];
 	let users: UsersResponse = [];
@@ -21,7 +22,8 @@
 	onMount(async () => {
 		try {
 			[users, friends] = await Promise.all([getAllUsers(), getFriends()]);
-		} catch {
+		} catch (error) {
+			logger.error('Failed to load friends list:', error);
 			toast.error('Failed to load friends list');
 		}
 	});
@@ -49,12 +51,12 @@
 
 					friends = await getFriends();
 				} catch (error) {
-					console.error(error);
 					if (error instanceof AuthError && (error.status === 400 || error.status === 404)) {
 						setError(form, 'username', 'Invalid username');
 						return;
 					}
 
+					logger.error('Failed to add friend:', error);
 					toast.error('Failed to add friend, please try again later.');
 				}
 			}

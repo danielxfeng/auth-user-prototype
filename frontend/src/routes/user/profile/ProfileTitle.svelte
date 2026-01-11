@@ -16,6 +16,7 @@
 	import { Spinner } from '$lib/components/ui/spinner';
 	import type { UpdateUserRequest } from '$lib/schemas/types';
 	import { fly } from 'svelte/transition';
+	import { logger } from '$lib/config/logger';
 
 	let editing = false;
 
@@ -51,6 +52,7 @@
 						return;
 					}
 
+					logger.error('Avatar update failed:', error);
 					toast.error('Avatar update failed, please try again later.');
 				}
 			}
