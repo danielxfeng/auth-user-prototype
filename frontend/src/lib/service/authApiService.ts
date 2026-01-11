@@ -223,7 +223,8 @@ export const disableTwoFa = async (
 		'PUT',
 		request,
 		TwoFaDisableRequestSchema,
-		UserWithTokenResponseSchema
+		UserWithTokenResponseSchema,
+		true
 	);
 };
 

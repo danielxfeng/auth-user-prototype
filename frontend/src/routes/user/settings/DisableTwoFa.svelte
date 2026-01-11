@@ -23,12 +23,15 @@
 				if (!form.valid) return;
 
 				try {
-					const user = await disableTwoFa(form.data);
+					await disableTwoFa(form.data);
 
-					toast.success('2FA disabled successfully!');
+					toast.success('2FA disabled successfully, please log in again.');
 
-					userStore.login(user);
+					userStore.logout();
 					closeShowTwoFaForm();
+					setTimeout(() => {
+						goto('/login');
+					}, 0);
 				} catch (error) {
 					if (error instanceof AuthError && error.status === 401) {
 						setError(form, 'password', 'Invalid password');
