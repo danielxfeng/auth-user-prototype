@@ -40,7 +40,7 @@
 					}
 
 					logger.error('Password update failed:', error);
-					toast.error('Login failed, please try again later.');
+					toast.error('Password update failed, please try again later.');
 				} finally {
 					form.data.oldPassword = '';
 					form.data.newPassword = '';
