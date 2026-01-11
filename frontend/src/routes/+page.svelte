@@ -10,6 +10,7 @@
 			<h1 class="animate-enter text-center text-2xl font-semibold lg:text-3xl xl:text-4xl">
 				Welcome to the Authentication Demo
 			</h1>
+			<p class="text-center text-sm text-muted-foreground mt-6">This is a demo environment. Data is reset periodically.</p>
 			<HealthCheck />
 		</div>
 
