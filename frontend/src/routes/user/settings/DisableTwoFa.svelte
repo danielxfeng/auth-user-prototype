@@ -30,7 +30,7 @@
 					userStore.logout();
 					closeShowTwoFaForm();
 					setTimeout(() => {
-						goto('/login');
+						goto('/user/login');
 					}, 0);
 				} catch (error) {
 					if (error instanceof AuthError && error.status === 401) {
