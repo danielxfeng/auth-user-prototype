@@ -37,6 +37,15 @@ import { cfg } from '$lib/config/config.js';
 
 type MethodType = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
+export const healthCheck = async (): Promise<boolean> => {
+	try {
+		const response = await fetch(cfg.apiHealthCheckUrl, { method: 'GET' });
+		return response.ok;
+	} catch {
+		return false;
+	}
+};
+
 const apiFetcher = async <TRequest, TResponse>(
 	path: string,
 	method: MethodType,
