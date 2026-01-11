@@ -7,7 +7,14 @@
 </script>
 
 <div class="flex w-full max-w-4xl flex-col items-center justify-center gap-4 p-6">
-	<h1 class="mb-6 w-full text-start text-2xl font-semibold lg:text-3xl xl:text-4xl">User Area</h1>
+	<div class="flex w-full justify-start">
+		<a
+			class="mb-6 text-start text-2xl font-semibold hover:text-foreground/80 lg:text-3xl xl:text-4xl"
+			href="/"
+		>
+			<h1>User Area</h1>
+		</a>
+	</div>
 	{#if browser}
 		<div class="w-full max-w-2xl">
 			<CardTabs />
