@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	swaggerfiles "github.com/swaggo/files"
@@ -35,12 +36,17 @@ func SetupRouter(logger *slog.Logger) *gin.Engine {
 		ServerErrorLevel: slog.LevelError,
 	}
 
+	// A rough CORS
 	r.Use(cors.New(cors.Config{
-		AllowOrigins: []string{
-			"http://localhost:5173",
-			"http://localhost:4173",
-			"https://localhost:5173",
-			"https://c2r5p11.hive.fi:5173",
+		AllowOriginFunc: func(origin string) bool {
+			if origin == "http://localhost:5173" ||
+				origin == "http://localhost:4173" {
+				return true
+			}
+			if strings.HasSuffix(origin, ".vercel.app") {
+				return true
+			}
+			return false
 		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
