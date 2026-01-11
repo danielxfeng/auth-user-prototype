@@ -4,7 +4,7 @@
 	import { userStore } from '$lib/stores';
 	import { goto } from '$app/navigation';
 	import TwoFaForm from './TwoFaForm.svelte';
-	import { fade, fly } from 'svelte/transition';
+	import { fly } from 'svelte/transition';
 
 	let status: 'login' | '2fa' = 'login';
 	let sessionToken: string = '';
@@ -23,12 +23,12 @@
 
 <div class="px-6">
 	{#if status === 'login'}
-		<div class="w-full" out:fly={{ y:-20, duration: 500 }}>
+		<div class="w-full" out:fly={{ y: -20, duration: 500 }}>
 			<LoginForm {goto2fa} />
 		</div>
 	{/if}
 	{#if status === '2fa'}
-		<div class="w-full" in:fly={{ y:-20, delay: 500, duration: 500 }}>
+		<div class="w-full" in:fly={{ y: -20, delay: 500, duration: 500 }}>
 			<TwoFaForm {sessionToken} />
 		</div>
 	{/if}
