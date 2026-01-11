@@ -116,7 +116,8 @@ export const UsersResponseSchema = z.array(SimpleUserResponseSchema);
 // 2FA setup
 export const TwoFaSetupResponseSchema = z.object({
 	twoFaSecret: z.string(),
-	setupToken: z.string()
+	setupToken: z.string(),
+	twoFaUri: z.string()
 });
 
 export const TwoFaConfirmFormSchema = z.object({

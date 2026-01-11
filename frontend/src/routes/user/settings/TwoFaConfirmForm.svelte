@@ -13,20 +13,15 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
-	import { fly } from 'svelte/transition';
 
 	const { twoFaSetupData, closeShowTwoFaForm } = $props();
 
 	let canvas: HTMLCanvasElement;
 
 	onMount(() => {
-		QRCode.toCanvas(
-			canvas,
-			`${twoFaSetupData.otpauthUrl}${$userStore.user?.username}?secret=${twoFaSetupData.secret}`,
-			{
-				width: 200
-			}
-		);
+		QRCode.toCanvas(canvas, twoFaSetupData.twoFaUri, {
+			width: 200
+		});
 	});
 
 	const { form, constraints, errors, enhance, submitting } = superForm(
