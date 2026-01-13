@@ -6,6 +6,7 @@ During the Transcendence project, our team built an online Ping-Pong game with a
 I was responsible for designing and implementing the **auth/user service** with **Go** and **Gin**.
 
 I also implemented a minimal **frontend prototype** using **Svelte** for learning purposes.
+It's just a quick demo, so for UI/UX I just applied the default theme from [shadcnui](https://ui.shadcn.com/themes).
 
 ---
 
@@ -13,7 +14,6 @@ I also implemented a minimal **frontend prototype** using **Svelte** for learnin
 
 - Frontend: [https://auth-demo-sage.vercel.app/](https://auth-demo-sage.vercel.app/)
 - Backend Swagger: [https://auth-demo-x0sd.onrender.com/api/docs/index.html](https://auth-demo-x0sd.onrender.com/api/docs/index.html)
-- Please wait for around 10 seconds and refresh the page when you see "backend is waking up" on frontend.
 
 
 
