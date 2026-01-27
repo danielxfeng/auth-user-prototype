@@ -196,7 +196,7 @@ func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 	var modelUser model.User
 	db.First(&modelUser, u.ID)
 
-	t.Run("Success", func(t *testing.T) {
+	t.Run("BlockedForSafety", func(t *testing.T) {
 		picture := "pic.png"
 		googleInfo := &dto.GoogleUserData{
 			ID:      "g123",
@@ -205,15 +205,24 @@ func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 		}
 
 		err := svc.linkGoogleAccountToExistingUser(ctx, &modelUser, googleInfo)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
+		if err == nil {
+			t.Fatal("expected linking to be blocked")
 		}
-
-		if modelUser.GoogleOauthID == nil || *modelUser.GoogleOauthID != "g123" {
-			t.Error("expected google id to be set")
+		authErr, ok := err.(*middleware.AuthError)
+		if !ok {
+			t.Fatalf("expected AuthError, got %T: %v", err, err)
 		}
-		if modelUser.Avatar == nil || *modelUser.Avatar != "pic.png" {
-			t.Error("expected avatar to be updated")
+		if authErr.Status != 409 {
+			t.Fatalf("expected 409 error, got %d: %v", authErr.Status, authErr)
+		}
+		if authErr.Message != "same email exists" {
+			t.Fatalf("expected safety message, got %q", authErr.Message)
+		}
+		if modelUser.GoogleOauthID != nil {
+			t.Error("expected google id to remain unset")
+		}
+		if modelUser.Avatar != nil {
+			t.Error("expected avatar to remain unchanged")
 		}
 	})
 
@@ -223,24 +232,22 @@ func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 			Email: "other@e.com",
 		}
 		err := svc.linkGoogleAccountToExistingUser(ctx, &modelUser, googleInfo)
-		if err == nil {
-			t.Error("expected error for email mismatch")
+		authErr, ok := err.(*middleware.AuthError)
+		if err == nil || !ok || authErr.Status != 409 {
+			t.Errorf("expected 409 AuthError, got %v", err)
 		}
 	})
 
 	t.Run("AlreadyLinked", func(t *testing.T) {
-		// modelUser already has Google ID from Success test
+		// Linking is currently blocked regardless of state.
 		googleInfo := &dto.GoogleUserData{
 			ID:    "g789",
 			Email: "link@e.com",
 		}
 		err := svc.linkGoogleAccountToExistingUser(ctx, &modelUser, googleInfo)
-		if err == nil {
-			t.Error("expected error for already linked account")
-		}
 		authErr, ok := err.(*middleware.AuthError)
-		if !ok || authErr.Status != 400 {
-			t.Errorf("expected 400 error, got %v", err)
+		if err == nil || !ok || authErr.Status != 409 {
+			t.Errorf("expected 409 AuthError, got %v", err)
 		}
 	})
 }
