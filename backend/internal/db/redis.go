@@ -10,11 +10,7 @@ import (
 
 var Redis *redis.Client
 
-// ConnectOptionalRedis connects to Redis and sets the global Redis client.
-//
-// If Redis is disabled via configuration, or if the connection attempt fails,
-// Redis remains nil and config.Cfg.IsRedisEnabled is set to false.
-func ConnectOptionalRedis(redisURL string) {
+func ConnectRedis(redisURL string) {
 	if !config.Cfg.IsRedisEnabled {
 		util.Logger.Info("redis is disabled by config")
 		return
@@ -23,9 +19,7 @@ func ConnectOptionalRedis(redisURL string) {
 	opt, err := redis.ParseURL(redisURL)
 
 	if err != nil {
-		util.Logger.Error("failed to parse redis url", "err", err)
-		config.Cfg.IsRedisEnabled = false
-		return
+		panic("failed to parse redis url, err: " + err.Error())
 	}
 
   	client := redis.NewClient(opt)
@@ -34,9 +28,7 @@ func ConnectOptionalRedis(redisURL string) {
 	
 	_, err = client.Ping(ctx).Result()
 	if err != nil {
-		util.Logger.Error("failed to connect to redis", "err", err)
-		config.Cfg.IsRedisEnabled = false
-		return
+		panic("failed to connect to redis: " + err.Error())
 	}
 
 	Redis = client
