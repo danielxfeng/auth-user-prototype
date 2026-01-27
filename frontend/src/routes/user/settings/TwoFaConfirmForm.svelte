@@ -14,6 +14,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import { logger } from '$lib/config/logger';
+	import { goto } from '$app/navigation';
 
 	const { twoFaSetupData, closeShowTwoFaForm } = $props();
 
@@ -39,12 +40,15 @@
 				};
 
 				try {
-					const user = await twoFaConfirm(payload);
+					await twoFaConfirm(payload);
 
-					userStore.login(user);
+					toast.success('2FA enabled successfully, please log in again!');
 
-					toast.success('2FA enabled successfully!');
+					userStore.logout();
 					closeShowTwoFaForm();
+					setTimeout(() => {
+						goto('/user/login');
+					}, 0);
 				} catch (error) {
 					if (error instanceof AuthError && error.status === 400) {
 						setError(form, 'twoFaCode', 'Invalid 2FA code');
