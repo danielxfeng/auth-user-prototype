@@ -188,6 +188,13 @@ func (s *UserService) UpdateUserProfile(ctx context.Context, userID uint, reques
 }
 
 func (s *UserService) DeleteUser(ctx context.Context, userID uint) error {
+	if config.Cfg.IsRedisEnabled {
+		err := logoutUserByRedis(ctx, s.Redis, userID)
+		if err != nil {
+			return err
+		}
+	}
+
 	res := s.DB.WithContext(ctx).Unscoped().Delete(&model.User{}, userID)
 	if res.Error != nil {
 		return res.Error
