@@ -16,7 +16,7 @@ func TestTwoFASetupAndConfirm(t *testing.T) {
 
 	t.Run("StartSetup_Success", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
 			User:     dto.User{UserName: dto.UserName{Username: "u1"}, Email: "u1@e.com"},
 			Password: dto.Password{Password: "p"},
@@ -33,7 +33,7 @@ func TestTwoFASetupAndConfirm(t *testing.T) {
 
 	t.Run("ConfirmSetup_Success", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
 			User:     dto.User{UserName: dto.UserName{Username: "u2"}, Email: "u2@e.com"},
 			Password: dto.Password{Password: "p"},
@@ -61,7 +61,7 @@ func TestTwoFASetupAndConfirm(t *testing.T) {
 
 	t.Run("StartSetup_AlreadyEnabled", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
 			User:     dto.User{UserName: dto.UserName{Username: "u3"}, Email: "u3@e.com"},
 			Password: dto.Password{Password: "p"},
@@ -85,7 +85,7 @@ func TestTwoFASetupAndConfirm(t *testing.T) {
 
 	t.Run("StartSetup_OAuthUser", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 		// Mock OAuth user
 		oauthUser := dto.GoogleUserData{
 			ID:    "oauth123",
@@ -108,7 +108,7 @@ func TestTwoFASetupAndConfirm(t *testing.T) {
 
 	t.Run("StartSetup_DBError", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
 			User:     dto.User{UserName: dto.UserName{Username: "u4"}, Email: "u4@e.com"},
 			Password: dto.Password{Password: "p"},
@@ -125,7 +125,7 @@ func TestTwoFASetupAndConfirm(t *testing.T) {
 
 func TestConfirmTwoFaSetup_Errors(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -193,7 +193,7 @@ func TestConfirmTwoFaSetup_Errors(t *testing.T) {
 
 	t.Run("NotInitiated", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 		// User with no 2FA token
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
 			User:     dto.User{UserName: dto.UserName{Username: "ni"}, Email: "ni@e.com"},
@@ -221,7 +221,7 @@ func TestTwoFAChallenge(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
 			User:     dto.User{UserName: dto.UserName{Username: "ch1"}, Email: "ch1@e.com"},
 			Password: dto.Password{Password: "p"},
@@ -253,7 +253,7 @@ func TestTwoFAChallenge(t *testing.T) {
 
 	t.Run("InvalidCode", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
 			User:     dto.User{UserName: dto.UserName{Username: "ch2"}, Email: "ch2@e.com"},
 			Password: dto.Password{Password: "p"},
@@ -281,7 +281,7 @@ func TestTwoFAChallenge(t *testing.T) {
 
 	t.Run("NotEnabled", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
 			User:     dto.User{UserName: dto.UserName{Username: "chne"}, Email: "chne@e.com"},
 			Password: dto.Password{Password: "p"},
@@ -304,7 +304,7 @@ func TestTwoFAChallenge(t *testing.T) {
 
 	t.Run("DBError", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
 			User:     dto.User{UserName: dto.UserName{Username: "ch3"}, Email: "ch3@e.com"},
 			Password: dto.Password{Password: "p"},
@@ -338,7 +338,7 @@ func TestDisableTwoFA(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
 			User:     dto.User{UserName: dto.UserName{Username: "dis1"}, Email: "dis1@e.com"},
 			Password: dto.Password{Password: "p"},
@@ -361,7 +361,7 @@ func TestDisableTwoFA(t *testing.T) {
 
 	t.Run("AlreadyDisabled", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
 			User:     dto.User{UserName: dto.UserName{Username: "dis2"}, Email: "dis2@e.com"},
 			Password: dto.Password{Password: "p"},
@@ -378,7 +378,7 @@ func TestDisableTwoFA(t *testing.T) {
 
 	t.Run("OAuthUser", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 		// Mock OAuth user
 		oauthUser := dto.GoogleUserData{
 			ID:    "oauth456",
@@ -401,7 +401,7 @@ func TestDisableTwoFA(t *testing.T) {
 
 	t.Run("DBError", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
 			User:     dto.User{UserName: dto.UserName{Username: "dis3"}, Email: "dis3@e.com"},
 			Password: dto.Password{Password: "p"},
@@ -421,7 +421,7 @@ func TestDisableTwoFA(t *testing.T) {
 
 	t.Run("InvalidPassword", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
 			User:     dto.User{UserName: dto.UserName{Username: "disinv"}, Email: "disinv@e.com"},
 			Password: dto.Password{Password: "correct"},

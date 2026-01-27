@@ -12,7 +12,7 @@ import (
 
 func TestGetAllUsersLimitedInfo(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	// Create users
@@ -47,7 +47,7 @@ func TestGetAllUsersLimitedInfo(t *testing.T) {
 
 func TestAddNewFriend(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	u1, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -119,7 +119,7 @@ func TestAddNewFriend(t *testing.T) {
 
 func TestGetUserFriends(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	u1, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
