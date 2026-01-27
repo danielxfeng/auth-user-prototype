@@ -35,3 +35,16 @@ func ConnectRedis(redisURL string) {
 
 	util.Logger.Info("connected to redis")
 }
+
+func CloseRedis() {
+	if Redis == nil {
+		return
+	}
+
+	err := Redis.Close()
+	if err != nil {
+		util.Logger.Error("failed to close redis connection", "error", err)
+	} else {
+		util.Logger.Info("redis connection closed")
+	}
+}

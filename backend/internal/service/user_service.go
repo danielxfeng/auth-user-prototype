@@ -4,14 +4,17 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
+	"github.com/paularynty/transcendence/auth-service-go/internal/config"
 	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
+	"github.com/redis/go-redis/v9"
 )
 
 const TwoFAPrePrefix = "pre-"
@@ -20,7 +23,8 @@ const MaxAvatarSize = 1 * 1024 * 1024 // 1 MB
 const BaseGoogleOAuthURL = "https://accounts.google.com/o/oauth2/v2/auth"
 
 type UserService struct {
-	DB *gorm.DB
+	DB    *gorm.DB
+	Redis *redis.Client
 }
 
 func (s *UserService) CreateUser(ctx context.Context, request *dto.CreateUserRequest) (*dto.UserWithoutTokenResponse, error) {
@@ -192,8 +196,8 @@ func (s *UserService) DeleteUser(ctx context.Context, userID uint) error {
 	return nil
 }
 
-func (s *UserService) LogoutUser(ctx context.Context, userID uint) error {
-	_, err := gorm.G[model.Token](s.DB.Unscoped()).Where("user_id = ?", userID).Delete(ctx)
+func logoutUserByDB(ctx context.Context, db *gorm.DB, userID uint) error {
+	_, err := gorm.G[model.Token](db.Unscoped()).Where("user_id = ?", userID).Delete(ctx)
 	if err != nil {
 		return err
 	}
@@ -201,7 +205,31 @@ func (s *UserService) LogoutUser(ctx context.Context, userID uint) error {
 	return nil
 }
 
-func (s *UserService) ValidateUserToken(ctx context.Context, token string, userId uint) error {
+func logoutUserByRedis(ctx context.Context, redis *redis.Client, userID uint) error {
+
+	iter := redis.Scan(ctx, 0, buildTokenKey(userID, "*"), 100).Iterator()
+	for iter.Next(ctx) {
+		err := redis.Del(ctx, iter.Val()).Err()
+		if err != nil {
+			return err
+		}
+	}
+	if err := iter.Err(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *UserService) LogoutUser(ctx context.Context, userID uint) error {
+	if config.Cfg.IsRedisEnabled {
+		return logoutUserByRedis(ctx, s.Redis, userID)
+	} else {
+		return logoutUserByDB(ctx, s.DB, userID)
+	}
+}
+
+func (s *UserService) validateUserTokenDB(ctx context.Context, token string, userId uint) error {
 	modelToken, err := gorm.G[model.Token](s.DB).Where("token = ?", token).First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -216,4 +244,28 @@ func (s *UserService) ValidateUserToken(ctx context.Context, token string, userI
 
 	s.updateHeartBeat(userId)
 	return nil
+}
+
+func (s *UserService) validateUserTokenRedis(ctx context.Context, token string, userId uint) error {
+	_, err := s.Redis.Get(ctx, buildTokenKey(userId, token)).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return middleware.NewAuthError(401, "invalid token")
+		}
+		return err
+	}
+
+	// A rough way to implement sliding expiration
+	s.Redis.Expire(ctx, buildTokenKey(userId, token), time.Duration(config.Cfg.UserTokenExpiry)*time.Second)
+	
+	s.updateHeartBeat(userId)
+	return nil
+}
+
+func (s *UserService) ValidateUserToken(ctx context.Context, token string, userId uint) error {
+	if config.Cfg.IsRedisEnabled {
+		return s.validateUserTokenRedis(ctx, token, userId)
+	} else {
+		return s.validateUserTokenDB(ctx, token, userId)
+	}
 }
