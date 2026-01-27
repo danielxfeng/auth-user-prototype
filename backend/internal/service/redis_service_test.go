@@ -192,3 +192,155 @@ func TestRedisLoginUpdatesHeartbeat(t *testing.T) {
 		t.Fatalf("expected recent heartbeat score, got %v (now=%d)", score, now)
 	}
 }
+
+func TestRedisLogoutRevokesAllTokens(t *testing.T) {
+	db := setupTestDB(t.Name())
+	mr, redisClient, cleanupRedis := setupTestRedis(t)
+	defer cleanupRedis()
+
+	svc := NewUserService(db, redisClient)
+	ctx := context.Background()
+
+	userResp, err := svc.CreateUser(ctx, &dto.CreateUserRequest{
+		User:     dto.User{UserName: dto.UserName{Username: "logoutmulti"}, Email: "logoutmulti@example.com"},
+		Password: dto.Password{Password: "password123"},
+	})
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	token1, err := svc.issueNewTokenForUser(ctx, userResp.ID, false)
+	if err != nil {
+		t.Fatalf("failed to issue token1: %v", err)
+	}
+	token2, err := svc.issueNewTokenForUser(ctx, userResp.ID, false)
+	if err != nil {
+		t.Fatalf("failed to issue token2: %v", err)
+	}
+
+	key1 := buildTokenKey(userResp.ID, token1)
+	key2 := buildTokenKey(userResp.ID, token2)
+	if !mr.Exists(key1) || !mr.Exists(key2) {
+		t.Fatalf("expected both redis token keys to exist: %s, %s", key1, key2)
+	}
+
+	if err := svc.LogoutUser(ctx, userResp.ID); err != nil {
+		t.Fatalf("logout failed: %v", err)
+	}
+
+	if mr.Exists(key1) || mr.Exists(key2) {
+		t.Fatal("expected redis token keys to be deleted on logout")
+	}
+
+	if err := svc.ValidateUserToken(ctx, token1, userResp.ID); err == nil {
+		t.Fatal("expected token1 to be invalid after logout")
+	}
+	if err := svc.ValidateUserToken(ctx, token2, userResp.ID); err == nil {
+		t.Fatal("expected token2 to be invalid after logout")
+	}
+}
+
+func TestRedisDeleteUserRevokesAllTokens(t *testing.T) {
+	db := setupTestDB(t.Name())
+	mr, redisClient, cleanupRedis := setupTestRedis(t)
+	defer cleanupRedis()
+
+	svc := NewUserService(db, redisClient)
+	ctx := context.Background()
+
+	userResp, err := svc.CreateUser(ctx, &dto.CreateUserRequest{
+		User:     dto.User{UserName: dto.UserName{Username: "delredis"}, Email: "delredis@example.com"},
+		Password: dto.Password{Password: "password123"},
+	})
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	token1, err := svc.issueNewTokenForUser(ctx, userResp.ID, false)
+	if err != nil {
+		t.Fatalf("failed to issue token1: %v", err)
+	}
+	token2, err := svc.issueNewTokenForUser(ctx, userResp.ID, false)
+	if err != nil {
+		t.Fatalf("failed to issue token2: %v", err)
+	}
+
+	key1 := buildTokenKey(userResp.ID, token1)
+	key2 := buildTokenKey(userResp.ID, token2)
+	if !mr.Exists(key1) || !mr.Exists(key2) {
+		t.Fatalf("expected both redis token keys to exist: %s, %s", key1, key2)
+	}
+
+	if err := svc.DeleteUser(ctx, userResp.ID); err != nil {
+		t.Fatalf("delete failed: %v", err)
+	}
+
+	if mr.Exists(key1) || mr.Exists(key2) {
+		t.Fatal("expected redis token keys to be deleted on user deletion")
+	}
+
+	if err := svc.ValidateUserToken(ctx, token1, userResp.ID); err == nil {
+		t.Fatal("expected token1 to be invalid after delete")
+	}
+	if err := svc.ValidateUserToken(ctx, token2, userResp.ID); err == nil {
+		t.Fatal("expected token2 to be invalid after delete")
+	}
+}
+
+func TestRedisUpdatePasswordRevokesOldTokens(t *testing.T) {
+	db := setupTestDB(t.Name())
+	mr, redisClient, cleanupRedis := setupTestRedis(t)
+	defer cleanupRedis()
+
+	svc := NewUserService(db, redisClient)
+	ctx := context.Background()
+
+	userResp, err := svc.CreateUser(ctx, &dto.CreateUserRequest{
+		User:     dto.User{UserName: dto.UserName{Username: "pwredis"}, Email: "pwredis@example.com"},
+		Password: dto.Password{Password: "oldpass"},
+	})
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	token1, err := svc.issueNewTokenForUser(ctx, userResp.ID, false)
+	if err != nil {
+		t.Fatalf("failed to issue token1: %v", err)
+	}
+	token2, err := svc.issueNewTokenForUser(ctx, userResp.ID, false)
+	if err != nil {
+		t.Fatalf("failed to issue token2: %v", err)
+	}
+
+	key1 := buildTokenKey(userResp.ID, token1)
+	key2 := buildTokenKey(userResp.ID, token2)
+	if !mr.Exists(key1) || !mr.Exists(key2) {
+		t.Fatalf("expected both redis token keys to exist: %s, %s", key1, key2)
+	}
+
+	updateReq := &dto.UpdateUserPasswordRequest{
+		OldPassword: dto.OldPassword{OldPassword: "oldpass"},
+		NewPassword: dto.NewPassword{NewPassword: "newpass"},
+	}
+	resp, err := svc.UpdateUserPassword(ctx, userResp.ID, updateReq)
+	if err != nil {
+		t.Fatalf("update password failed: %v", err)
+	}
+	if resp.Token == "" {
+		t.Fatal("expected new token from password update")
+	}
+
+	if mr.Exists(key1) || mr.Exists(key2) {
+		t.Fatal("expected old redis token keys to be deleted on password change")
+	}
+
+	if err := svc.ValidateUserToken(ctx, token1, userResp.ID); err == nil {
+		t.Fatal("expected token1 to be invalid after password change")
+	}
+	if err := svc.ValidateUserToken(ctx, token2, userResp.ID); err == nil {
+		t.Fatal("expected token2 to be invalid after password change")
+	}
+	if err := svc.ValidateUserToken(ctx, resp.Token, userResp.ID); err != nil {
+		t.Fatalf("expected new token to be valid after password change, got %v", err)
+	}
+}
