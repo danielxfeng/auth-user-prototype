@@ -85,6 +85,9 @@ func main() {
 	db.ConnectDB(config.Cfg.DbAddress)
 	defer db.CloseDB()
 
+	db.ConnectRedis(config.Cfg.RedisURL)
+	defer db.CloseRedis()
+
 	// router
 	r := SetupRouter(util.Logger)
 	routers.UsersRouter(r.Group("/api/users"))

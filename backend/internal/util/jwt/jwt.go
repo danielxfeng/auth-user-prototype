@@ -26,10 +26,17 @@ func generateRegisteredClaims(expiration int) libjwt.RegisteredClaims {
 }
 
 func SignUserToken(userID uint) (string, error) {
+	userTokenExpiry := config.Cfg.UserTokenExpiry
+	// For Redis mode, use absolute expiry to limit max token lifetime,
+	// because the actual expiry is managed in Redis with sliding expiration.
+	if config.Cfg.IsRedisEnabled {
+		userTokenExpiry = config.Cfg.UserTokenAbsoluteExpiry
+	}
+
 	claims := dto.UserJwtPayload{
 		UserID:           userID,
 		Type:             UserTokenType,
-		RegisteredClaims: generateRegisteredClaims(config.Cfg.UserTokenExpiry),
+		RegisteredClaims: generateRegisteredClaims(userTokenExpiry),
 	}
 
 	token := libjwt.NewWithClaims(libjwt.SigningMethodHS256, claims)
