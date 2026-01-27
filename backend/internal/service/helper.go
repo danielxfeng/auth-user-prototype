@@ -154,7 +154,7 @@ func (s *UserService) clearExpiredHeartBeatsByRedis() {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		
+
 		err := s.Redis.ZRemRangeByScore(ctx, HeartBeatPrefix, "-inf", strconv.FormatInt(time.Now().Add(-2*time.Minute).Unix(), 10)).Err()
 		if err != nil {
 			util.Logger.Warn("failed to clear expired heartbeats from redis", "err", err)

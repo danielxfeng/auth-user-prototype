@@ -22,10 +22,10 @@ func ConnectRedis(redisURL string) {
 		panic("failed to parse redis url, err: " + err.Error())
 	}
 
-  	client := redis.NewClient(opt)
+	client := redis.NewClient(opt)
 
 	ctx := context.Background()
-	
+
 	_, err = client.Ping(ctx).Result()
 	if err != nil {
 		panic("failed to connect to redis: " + err.Error())
