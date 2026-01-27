@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alicebob/miniredis/v2"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
@@ -44,15 +46,18 @@ func setupTestDB(testName string) *gorm.DB {
 
 func setupConfig() {
 	config.Cfg = &config.Config{
-		JwtSecret:             "test-secret",
-		UserTokenExpiry:       3600,
-		OauthStateTokenExpiry: 600,
-		GoogleClientId:        "test-client-id",
-		GoogleClientSecret:    "test-client-secret",
-		GoogleRedirectUri:     "http://localhost:8080/callback",
-		FrontendUrl:           "http://localhost:3000",
-		TwoFaUrlPrefix:        "otpauth://totp/Transcendence?secret=",
-		TwoFaTokenExpiry:      600,
+		JwtSecret:               "test-secret",
+		UserTokenExpiry:         3600,
+		UserTokenAbsoluteExpiry: 2592000,
+		OauthStateTokenExpiry:   600,
+		GoogleClientId:          "test-client-id",
+		GoogleClientSecret:      "test-client-secret",
+		GoogleRedirectUri:       "http://localhost:8080/callback",
+		FrontendUrl:             "http://localhost:3000",
+		TwoFaUrlPrefix:          "otpauth://totp/Transcendence?secret=",
+		TwoFaTokenExpiry:        600,
+		RedisURL:                "",
+		IsRedisEnabled:          false,
 	}
 
 	// Mock logger to discard output during tests
@@ -65,4 +70,27 @@ func TestMain(m *testing.M) {
 	setupConfig()
 	code := m.Run()
 	os.Exit(code)
+}
+
+func setupTestRedis(t *testing.T) (*miniredis.Miniredis, *redis.Client, func()) {
+	t.Helper()
+
+	mr := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{
+		Addr: mr.Addr(),
+	})
+
+	prevCfg := config.Cfg
+	cfgCopy := *prevCfg
+	cfgCopy.RedisURL = "redis://" + mr.Addr()
+	cfgCopy.IsRedisEnabled = true
+	config.Cfg = &cfgCopy
+
+	cleanup := func() {
+		_ = client.Close()
+		mr.Close()
+		config.Cfg = prevCfg
+	}
+
+	return mr, client, cleanup
 }
