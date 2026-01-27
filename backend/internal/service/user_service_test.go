@@ -12,7 +12,7 @@ import (
 
 func TestCreateUser(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	t.Run("Success", func(t *testing.T) {
@@ -83,7 +83,7 @@ func TestCreateUser(t *testing.T) {
 
 func TestLoginUser(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	// Setup user
@@ -232,7 +232,7 @@ func TestLoginUser(t *testing.T) {
 
 func TestGetUserByID(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -267,7 +267,7 @@ func TestGetUserByID(t *testing.T) {
 
 func TestUpdateUserPassword(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -369,7 +369,7 @@ func TestUpdateUserPassword(t *testing.T) {
 
 func TestUpdateUserProfile(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -429,7 +429,7 @@ func TestUpdateUserProfile(t *testing.T) {
 
 func TestDeleteUser(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -455,7 +455,7 @@ func TestDeleteUser(t *testing.T) {
 
 func TestValidateUserToken(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	createReq := &dto.CreateUserRequest{
@@ -512,7 +512,7 @@ func TestValidateUserToken(t *testing.T) {
 
 func TestLogoutUser(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	createReq := &dto.CreateUserRequest{
@@ -547,7 +547,7 @@ func TestDBErrors(t *testing.T) {
 
 	t.Run("CreateUser", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 
 		req := &dto.CreateUserRequest{
 			User:     dto.User{UserName: dto.UserName{Username: "db1"}, Email: "db1@e.com"},
@@ -565,7 +565,7 @@ func TestDBErrors(t *testing.T) {
 
 	t.Run("LoginUser", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 
 		req := &dto.LoginUserRequest{
 			Identifier: dto.Identifier{Identifier: "db1"},
@@ -583,7 +583,7 @@ func TestDBErrors(t *testing.T) {
 
 	t.Run("GetUserByID", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 
 		sqlDB, _ := db.DB()
 		_ = sqlDB.Close()
@@ -596,7 +596,7 @@ func TestDBErrors(t *testing.T) {
 
 	t.Run("UpdateUserPassword", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 
 		req := &dto.UpdateUserPasswordRequest{
 			OldPassword: dto.OldPassword{OldPassword: "p"},
@@ -614,7 +614,7 @@ func TestDBErrors(t *testing.T) {
 
 	t.Run("UpdateUserProfile", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 
 		req := &dto.UpdateUserRequest{
 			User: dto.User{UserName: dto.UserName{Username: "n"}, Email: "n@e.com"},
@@ -631,7 +631,7 @@ func TestDBErrors(t *testing.T) {
 
 	t.Run("DeleteUser", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 
 		sqlDB, _ := db.DB()
 		_ = sqlDB.Close()
@@ -644,7 +644,7 @@ func TestDBErrors(t *testing.T) {
 
 	t.Run("ValidateUserToken", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 
 		sqlDB, _ := db.DB()
 		_ = sqlDB.Close()
@@ -657,7 +657,7 @@ func TestDBErrors(t *testing.T) {
 
 	t.Run("LogoutUser", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db)
+		svc := NewUserService(db, nil)
 
 		sqlDB, _ := db.DB()
 		_ = sqlDB.Close()
