@@ -16,7 +16,7 @@ import (
 
 func TestGetGoogleOAuthURL(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	t.Run("Success", func(t *testing.T) {
@@ -45,7 +45,7 @@ func TestGetGoogleOAuthURL(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_InvalidState(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	// Helper to parse redirect URL
@@ -80,7 +80,7 @@ func TestHandleGoogleOAuthCallback_InvalidState(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_Success(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	// Mock dependencies
@@ -138,11 +138,74 @@ func TestHandleGoogleOAuthCallback_Success(t *testing.T) {
 			t.Error("expected token in redirect")
 		}
 	})
+
+	t.Run("ExistingEmailLink", func(t *testing.T) {
+		// Create a non-OAuth user with matching email
+		_, _ = svc.CreateUser(ctx, &dto.CreateUserRequest{
+			User:     dto.User{UserName: dto.UserName{Username: "emailmatch"}, Email: "linkme@google.com"},
+			Password: dto.Password{Password: "p"},
+		})
+
+		FetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
+			return &dto.GoogleUserData{
+				ID:    "g_link",
+				Email: "linkme@google.com",
+				Name:  "Link Me",
+			}, nil
+		}
+
+		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "validcode", state)
+		u, _ := url.Parse(redirectURL)
+		q := u.Query()
+		if q.Get("token") != "" {
+			t.Error("expected no token in redirect")
+		}
+		if q.Get("error") == "" {
+			t.Error("expected error in redirect for same-email linking")
+		}
+
+		// Verify existing user is NOT linked
+		var user model.User
+		err := db.Where("email = ?", "linkme@google.com").First(&user).Error
+		if err != nil {
+			t.Fatal("expected existing user")
+		}
+		if user.GoogleOauthID != nil {
+			t.Error("expected google oauth id to remain unset")
+		}
+	})
+
+	t.Run("ExistingEmailWith2FA", func(t *testing.T) {
+		// Create a user with 2FA enabled
+		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
+			User:     dto.User{UserName: dto.UserName{Username: "email2fa"}, Email: "2fa@google.com"},
+			Password: dto.Password{Password: "p"},
+		})
+		db.Model(&model.User{}).Where("id = ?", u.ID).Update("two_fa_token", "secret")
+
+		FetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
+			return &dto.GoogleUserData{
+				ID:    "g_2fa",
+				Email: "2fa@google.com",
+				Name:  "Two Fa",
+			}, nil
+		}
+
+		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "validcode", state)
+		u2, _ := url.Parse(redirectURL)
+		q := u2.Query()
+		if q.Get("token") != "" {
+			t.Error("expected no token in redirect")
+		}
+		if q.Get("error") == "" {
+			t.Error("expected error in redirect for 2FA user")
+		}
+	})
 }
 
 func TestHandleGoogleOAuthCallback_Errors(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	origExchange := ExchangeCodeForTokens
@@ -184,7 +247,7 @@ func TestHandleGoogleOAuthCallback_Errors(t *testing.T) {
 
 func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -254,7 +317,7 @@ func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 
 func TestCreateNewUserFromGoogleInfo(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	t.Run("Success", func(t *testing.T) {
@@ -304,7 +367,7 @@ func TestCreateNewUserFromGoogleInfo(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_DBError(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	origExchange := ExchangeCodeForTokens
@@ -340,7 +403,7 @@ func TestHandleGoogleOAuthCallback_DBError(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_LinkError(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db)
+	svc := NewUserService(db, nil)
 	ctx := context.Background()
 
 	origExchange := ExchangeCodeForTokens

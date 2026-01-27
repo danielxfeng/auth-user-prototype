@@ -146,7 +146,7 @@ func TestUsersRouter_LoginUser_Failures(t *testing.T) {
 
 	// 3. Invalid Credentials
 	// Create user
-	svc := service.NewUserService(model.DB)
+	svc := service.NewUserService(model.DB, nil)
 	_, _ = svc.CreateUser(context.Background(), &dto.CreateUserRequest{
 		User:     dto.User{UserName: dto.UserName{Username: "loginfail"}, Email: "fail@e.com"},
 		Password: dto.Password{Password: "correct"},
@@ -168,7 +168,7 @@ func TestUsersRouter_UpdateUser_Failures(t *testing.T) {
 	router, cleanup := setupUsersRouterTestFailure(t)
 	defer cleanup()
 
-	svc := service.NewUserService(model.DB)
+	svc := service.NewUserService(model.DB, nil)
 	u, _ := svc.CreateUser(context.Background(), &dto.CreateUserRequest{
 		User:     dto.User{UserName: dto.UserName{Username: "u1"}, Email: "u1@e.com"},
 		Password: dto.Password{Password: "pass"},
@@ -216,7 +216,7 @@ func TestUsersRouter_Friends_Failures(t *testing.T) {
 	router, cleanup := setupUsersRouterTestFailure(t)
 	defer cleanup()
 
-	svc := service.NewUserService(model.DB)
+	svc := service.NewUserService(model.DB, nil)
 	u1, _ := svc.CreateUser(context.Background(), &dto.CreateUserRequest{
 		User:     dto.User{UserName: dto.UserName{Username: "f1"}, Email: "f1@e.com"},
 		Password: dto.Password{Password: "pass"},
@@ -274,7 +274,7 @@ func TestUsersRouter_2FA_Failures(t *testing.T) {
 	router, cleanup := setupUsersRouterTestFailure(t)
 	defer cleanup()
 
-	svc := service.NewUserService(model.DB)
+	svc := service.NewUserService(model.DB, nil)
 	u, _ := svc.CreateUser(context.Background(), &dto.CreateUserRequest{
 		User:     dto.User{UserName: dto.UserName{Username: "2fafail"}, Email: "2fafail@e.com"},
 		Password: dto.Password{Password: "pass"},

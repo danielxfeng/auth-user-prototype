@@ -237,7 +237,7 @@ func TestUsersRouter_UpdateUserPassword(t *testing.T) {
 	router, cleanup := setupUsersRouterTestUnique(t)
 	defer cleanup()
 
-	svc := service.NewUserService(model.DB)
+	svc := service.NewUserService(model.DB, nil)
 	userResp, _ := svc.CreateUser(context.Background(), &dto.CreateUserRequest{
 		User:     dto.User{UserName: dto.UserName{Username: "pw"}, Email: "pw@e.com"},
 		Password: dto.Password{Password: "oldpass"},
@@ -336,7 +336,7 @@ func TestUsersRouter_Friends(t *testing.T) {
 	router, cleanup := setupUsersRouterTestUnique(t)
 	defer cleanup()
 
-	svc := service.NewUserService(model.DB)
+	svc := service.NewUserService(model.DB, nil)
 	u1, _ := svc.CreateUser(context.Background(), &dto.CreateUserRequest{
 		User:     dto.User{UserName: dto.UserName{Username: "f1"}, Email: "f1@e.com"},
 		Password: dto.Password{Password: "p"},
@@ -382,7 +382,7 @@ func TestUsersRouter_2FA(t *testing.T) {
 	router, cleanup := setupUsersRouterTestUnique(t)
 	defer cleanup()
 
-	svc := service.NewUserService(model.DB)
+	svc := service.NewUserService(model.DB, nil)
 	user, _ := svc.CreateUser(context.Background(), &dto.CreateUserRequest{
 		User:     dto.User{UserName: dto.UserName{Username: "2fa"}, Email: "2fa@e.com"},
 		Password: dto.Password{Password: "pass"},

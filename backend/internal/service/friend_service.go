@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"time"
 
 	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
@@ -31,7 +30,7 @@ func (s *UserService) GetUserFriends(ctx context.Context, userID uint) ([]dto.Fr
 		return nil, err
 	}
 
-	onlineStatus, err := gorm.G[model.HeartBeat](s.DB).Where("last_seen_at > ?", time.Now().Add(-2*time.Minute)).Find(ctx)
+	onlineStatus, err := s.getOnlineStatus(ctx)
 	if err != nil {
 		return nil, err
 	}

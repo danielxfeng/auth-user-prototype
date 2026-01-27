@@ -11,7 +11,7 @@ import (
 )
 
 func UsersRouter(r *gin.RouterGroup) {
-	h := &handler.UserHandler{Service: service.NewUserService(db.DB)}
+	h := &handler.UserHandler{Service: service.NewUserService(db.DB, db.Redis)}
 
 	// Public endpoints
 	r.POST("/", middleware.ValidateBody[dto.CreateUserRequest](), h.CreateUserHandler)
