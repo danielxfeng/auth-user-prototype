@@ -137,7 +137,11 @@ var FetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, e
 	return googleUserInfo, nil
 }
 
+// This feature does not work unless we can verify the user's password/email ownership.
 func (s *UserService) linkGoogleAccountToExistingUser(ctx context.Context, modelUser *model.User, googleUserInfo *dto.GoogleUserData) error {
+	return middleware.NewAuthError(409, "same email exists")
+
+	/**
 
 	// Should not be here.
 	if modelUser.Email != googleUserInfo.Email {
@@ -163,6 +167,7 @@ func (s *UserService) linkGoogleAccountToExistingUser(ctx context.Context, model
 	}
 
 	return nil
+	*/
 }
 
 func (s *UserService) createNewUserFromGoogleInfo(ctx context.Context, googleUserInfo *dto.GoogleUserData, isRetry bool) (*model.User, error) {
