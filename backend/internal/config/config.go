@@ -17,6 +17,8 @@ type Config struct {
 	FrontendUrl           string
 	TwoFaUrlPrefix        string
 	TwoFaTokenExpiry      int
+	RedisURL              string
+	IsRedisEnabled        bool
 }
 
 var Cfg *Config
@@ -55,5 +57,7 @@ func LoadConfig() {
 		FrontendUrl:           getEnvStrOrDefault("FRONTEND_URL", "http://localhost:5173"),
 		TwoFaUrlPrefix:        getEnvStrOrDefault("TWO_FA_URL_PREFIX", "otpauth://totp/Transcendence?secret="),
 		TwoFaTokenExpiry:      getEnvIntOrDefault("TWO_FA_TOKEN_EXPIRY", 600),
+		RedisURL:              getEnvStrOrDefault("REDIS_URL", ""),
+		IsRedisEnabled:        getEnvStrOrDefault("REDIS_URL", "") != "",
 	}
 }
