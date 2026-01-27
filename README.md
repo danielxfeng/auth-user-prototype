@@ -35,6 +35,8 @@ Currently supported features include:
   - Friend listing
   - Friend requests
   - Online status tracking
+- Redis-backed session tokens (Optional) (revocation + sliding expiration)
+- Redis-backed heartbeats for online status (Optional)
 
 ## Libraries
 
@@ -42,6 +44,7 @@ Currently supported features include:
 
 - `gin`: web framework
 - `gorm`: ORM
+- `go-redis`: Redis
 - `go-playground/validator v10`: data validation
 - `godotenv`: environment variables
 - `slog-gin`: logging
@@ -77,6 +80,21 @@ make dev
 
 Then navigate to `http://localhost:3003/api/docs/index.html` for swagger.
 
+Redis is optional. To enable it locally:
+
+```bash
+# example: run redis with docker
+docker run --rm -p 6379:6379 redis:latest
+
+# enable redis mode for the backend
+export REDIS_URL=redis://localhost:6379/0
+```
+
+Token extension (sliding expiration) in Redis mode:
+
+- `USER_TOKEN_EXPIRY` controls the Redis TTL and is extended on token validation.
+- `USER_TOKEN_ABSOLUTE_EXPIRY` caps the maximum lifetime via the JWT `exp` claim.
+
 ### Frontend
 
 ```bash
@@ -93,6 +111,6 @@ Due to the constraints of the Hive project, `SQLite` was required for the projec
 
 As a result:
 
-- `SQLite` is used to store authentication tokens and heartbeat data. In production, these would be better handled by `Redis`.
-- Stale tokens and heartbeat data are not automatically cleaned up, and token auto-renewal is not implemented.
+- The project still uses `SQLite` for core data due to Hive constraints.
+- Redis-backed tokens and heartbeats are implemented, but the sliding expiration and cleanup strategy is simple.
 - On the frontend side, friend auto-completion is implemented in a basic manner.
