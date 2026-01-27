@@ -138,6 +138,69 @@ func TestHandleGoogleOAuthCallback_Success(t *testing.T) {
 			t.Error("expected token in redirect")
 		}
 	})
+
+	t.Run("ExistingEmailLink", func(t *testing.T) {
+		// Create a non-OAuth user with matching email
+		_, _ = svc.CreateUser(ctx, &dto.CreateUserRequest{
+			User:     dto.User{UserName: dto.UserName{Username: "emailmatch"}, Email: "linkme@google.com"},
+			Password: dto.Password{Password: "p"},
+		})
+
+		FetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
+			return &dto.GoogleUserData{
+				ID:    "g_link",
+				Email: "linkme@google.com",
+				Name:  "Link Me",
+			}, nil
+		}
+
+		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "validcode", state)
+		u, _ := url.Parse(redirectURL)
+		q := u.Query()
+		if q.Get("token") == "" {
+			t.Error("expected token in redirect")
+		}
+		if q.Get("error") != "" {
+			t.Errorf("unexpected error in redirect: %s", q.Get("error"))
+		}
+
+		// Verify existing user is linked
+		var user model.User
+		err := db.Where("email = ?", "linkme@google.com").First(&user).Error
+		if err != nil {
+			t.Fatal("expected existing user")
+		}
+		if user.GoogleOauthID == nil || *user.GoogleOauthID != "g_link" {
+			t.Error("expected google oauth id to be linked")
+		}
+	})
+
+	t.Run("ExistingEmailWith2FA", func(t *testing.T) {
+		// Create a user with 2FA enabled
+		u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
+			User:     dto.User{UserName: dto.UserName{Username: "email2fa"}, Email: "2fa@google.com"},
+			Password: dto.Password{Password: "p"},
+		})
+		db.Model(&model.User{}).Where("id = ?", u.ID).Update("two_fa_token", "secret")
+
+		FetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
+			return &dto.GoogleUserData{
+				ID:    "g_2fa",
+				Email: "2fa@google.com",
+				Name:  "Two Fa",
+			}, nil
+		}
+
+		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "validcode", state)
+		u2, _ := url.Parse(redirectURL)
+		q := u2.Query()
+		if q.Get("token") != "" {
+			t.Error("expected no token in redirect")
+		}
+		if q.Get("error") == "" {
+			t.Error("expected error in redirect for 2FA user")
+		}
+	})
 }
 
 func TestHandleGoogleOAuthCallback_Errors(t *testing.T) {
