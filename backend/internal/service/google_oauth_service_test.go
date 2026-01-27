@@ -157,21 +157,21 @@ func TestHandleGoogleOAuthCallback_Success(t *testing.T) {
 		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "validcode", state)
 		u, _ := url.Parse(redirectURL)
 		q := u.Query()
-		if q.Get("token") == "" {
-			t.Error("expected token in redirect")
+		if q.Get("token") != "" {
+			t.Error("expected no token in redirect")
 		}
-		if q.Get("error") != "" {
-			t.Errorf("unexpected error in redirect: %s", q.Get("error"))
+		if q.Get("error") == "" {
+			t.Error("expected error in redirect for same-email linking")
 		}
 
-		// Verify existing user is linked
+		// Verify existing user is NOT linked
 		var user model.User
 		err := db.Where("email = ?", "linkme@google.com").First(&user).Error
 		if err != nil {
 			t.Fatal("expected existing user")
 		}
-		if user.GoogleOauthID == nil || *user.GoogleOauthID != "g_link" {
-			t.Error("expected google oauth id to be linked")
+		if user.GoogleOauthID != nil {
+			t.Error("expected google oauth id to remain unset")
 		}
 	})
 
