@@ -257,7 +257,7 @@ func (s *UserService) validateUserTokenRedis(ctx context.Context, token string, 
 
 	// A rough way to implement sliding expiration
 	s.Redis.Expire(ctx, buildTokenKey(userId, token), time.Duration(config.Cfg.UserTokenExpiry)*time.Second)
-	
+
 	s.updateHeartBeat(userId)
 	return nil
 }
