@@ -6,7 +6,7 @@ import (
 	libjwt "github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 
-	"github.com/paularynty/transcendence/auth-service-go/internal/config"
+	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 )
 
@@ -25,12 +25,12 @@ func generateRegisteredClaims(expiration int) libjwt.RegisteredClaims {
 	}
 }
 
-func SignUserToken(userID uint) (string, error) {
-	userTokenExpiry := config.Cfg.UserTokenExpiry
+func SignUserToken(dep *dependency.Dependency, userID uint) (string, error) {
+	userTokenExpiry := dep.Cfg.UserTokenExpiry
 	// For Redis mode, use absolute expiry to limit max token lifetime,
 	// because the actual expiry is managed in Redis with sliding expiration.
-	if config.Cfg.IsRedisEnabled {
-		userTokenExpiry = config.Cfg.UserTokenAbsoluteExpiry
+	if dep.Cfg.IsRedisEnabled {
+		userTokenExpiry = dep.Cfg.UserTokenAbsoluteExpiry
 	}
 
 	claims := dto.UserJwtPayload{
@@ -40,7 +40,7 @@ func SignUserToken(userID uint) (string, error) {
 	}
 
 	token := libjwt.NewWithClaims(libjwt.SigningMethodHS256, claims)
-	signedToken, err := token.SignedString([]byte(config.Cfg.JwtSecret))
+	signedToken, err := token.SignedString([]byte(dep.Cfg.JwtSecret))
 	if err != nil {
 		return "", err
 	}
@@ -48,14 +48,14 @@ func SignUserToken(userID uint) (string, error) {
 	return signedToken, nil
 }
 
-func SignOauthStateToken() (string, error) {
+func SignOauthStateToken(dep *dependency.Dependency) (string, error) {
 	claims := dto.OauthStateJwtPayload{
 		Type:             GoogleOAuthStateType,
-		RegisteredClaims: generateRegisteredClaims(config.Cfg.OauthStateTokenExpiry),
+		RegisteredClaims: generateRegisteredClaims(dep.Cfg.OauthStateTokenExpiry),
 	}
 
 	token := libjwt.NewWithClaims(libjwt.SigningMethodHS256, claims)
-	signedToken, err := token.SignedString([]byte(config.Cfg.JwtSecret))
+	signedToken, err := token.SignedString([]byte(dep.Cfg.JwtSecret))
 	if err != nil {
 		return "", err
 	}
@@ -63,16 +63,16 @@ func SignOauthStateToken() (string, error) {
 	return signedToken, nil
 }
 
-func SignTwoFASetupToken(userID uint, secret string) (string, error) {
+func SignTwoFASetupToken(dep *dependency.Dependency, userID uint, secret string) (string, error) {
 	claims := dto.TwoFaSetupJwtPayload{
 		UserID:           userID,
 		Secret:           secret,
 		Type:             TwoFASetupType,
-		RegisteredClaims: generateRegisteredClaims(config.Cfg.TwoFaTokenExpiry),
+		RegisteredClaims: generateRegisteredClaims(dep.Cfg.TwoFaTokenExpiry),
 	}
 
 	token := libjwt.NewWithClaims(libjwt.SigningMethodHS256, claims)
-	signedToken, err := token.SignedString([]byte(config.Cfg.JwtSecret))
+	signedToken, err := token.SignedString([]byte(dep.Cfg.JwtSecret))
 	if err != nil {
 		return "", err
 	}
@@ -80,15 +80,15 @@ func SignTwoFASetupToken(userID uint, secret string) (string, error) {
 	return signedToken, nil
 }
 
-func SignTwoFAToken(userID uint) (string, error) {
+func SignTwoFAToken(dep *dependency.Dependency, userID uint) (string, error) {
 	claims := dto.TwoFaJwtPayload{
 		UserID:           userID,
 		Type:             TwoFATokenType,
-		RegisteredClaims: generateRegisteredClaims(config.Cfg.TwoFaTokenExpiry),
+		RegisteredClaims: generateRegisteredClaims(dep.Cfg.TwoFaTokenExpiry),
 	}
 
 	token := libjwt.NewWithClaims(libjwt.SigningMethodHS256, claims)
-	signedToken, err := token.SignedString([]byte(config.Cfg.JwtSecret))
+	signedToken, err := token.SignedString([]byte(dep.Cfg.JwtSecret))
 	if err != nil {
 		return "", err
 	}
@@ -96,12 +96,12 @@ func SignTwoFAToken(userID uint) (string, error) {
 	return signedToken, nil
 }
 
-func validateToken[T libjwt.Claims](signedToken string, claims T) (T, error) {
+func validateToken[T libjwt.Claims](dep *dependency.Dependency, signedToken string, claims T) (T, error) {
 	token, err := libjwt.ParseWithClaims(
 		signedToken,
 		claims,
 		func(token *libjwt.Token) (any, error) {
-			return []byte(config.Cfg.JwtSecret), nil
+			return []byte(dep.Cfg.JwtSecret), nil
 		},
 	)
 	if err != nil {
@@ -115,9 +115,9 @@ func validateToken[T libjwt.Claims](signedToken string, claims T) (T, error) {
 	return claims, nil
 }
 
-func ValidateUserTokenGeneric(signedToken string) (*dto.UserJwtPayload, error) {
+func ValidateUserTokenGeneric(dep *dependency.Dependency, signedToken string) (*dto.UserJwtPayload, error) {
 	claims := &dto.UserJwtPayload{}
-	parsedClaims, err := validateToken(signedToken, claims)
+	parsedClaims, err := validateToken(dep, signedToken, claims)
 	if err != nil {
 		return nil, err
 	}
@@ -129,9 +129,9 @@ func ValidateUserTokenGeneric(signedToken string) (*dto.UserJwtPayload, error) {
 	return parsedClaims, nil
 }
 
-func ValidateOauthStateToken(signedToken string) (*dto.OauthStateJwtPayload, error) {
+func ValidateOauthStateToken(dep *dependency.Dependency, signedToken string) (*dto.OauthStateJwtPayload, error) {
 	claims := &dto.OauthStateJwtPayload{}
-	parsedClaims, err := validateToken(signedToken, claims)
+	parsedClaims, err := validateToken(dep, signedToken, claims)
 	if err != nil {
 		return nil, err
 	}
@@ -143,9 +143,9 @@ func ValidateOauthStateToken(signedToken string) (*dto.OauthStateJwtPayload, err
 	return parsedClaims, nil
 }
 
-func ValidateTwoFAToken(signedToken string) (*dto.TwoFaJwtPayload, error) {
+func ValidateTwoFAToken(dep *dependency.Dependency, signedToken string) (*dto.TwoFaJwtPayload, error) {
 	claims := &dto.TwoFaJwtPayload{}
-	parsedClaims, err := validateToken(signedToken, claims)
+	parsedClaims, err := validateToken(dep, signedToken, claims)
 	if err != nil {
 		return nil, err
 	}
@@ -157,9 +157,9 @@ func ValidateTwoFAToken(signedToken string) (*dto.TwoFaJwtPayload, error) {
 	return parsedClaims, nil
 }
 
-func ValidateTwoFASetupToken(signedToken string) (*dto.TwoFaSetupJwtPayload, error) {
+func ValidateTwoFASetupToken(dep *dependency.Dependency, signedToken string) (*dto.TwoFaSetupJwtPayload, error) {
 	claims := &dto.TwoFaSetupJwtPayload{}
-	parsedClaims, err := validateToken(signedToken, claims)
+	parsedClaims, err := validateToken(dep, signedToken, claims)
 	if err != nil {
 		return nil, err
 	}

@@ -2,24 +2,21 @@ package db
 
 import (
 	"context"
+	"log/slog"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-
-	"github.com/paularynty/transcendence/auth-service-go/internal/util"
 )
 
-var DB *gorm.DB
-
-func ConnectDB(dbName string) {
+func GetDB(dbName string, logger *slog.Logger)  *gorm.DB {
 	var err error
-	DB, err = gorm.Open(sqlite.Open(dbName), &gorm.Config{TranslateError: true})
+	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{TranslateError: true})
 
 	if err != nil {
 		panic("failed to connect to db: " + dbName)
 	}
 
-	DB.Exec("PRAGMA foreign_keys = ON")
+	db.Exec("PRAGMA foreign_keys = ON")
 
 	for _, model := range []any{
 		&User{},
@@ -27,32 +24,33 @@ func ConnectDB(dbName string) {
 		&Token{},
 		&HeartBeat{},
 	} {
-		if err := DB.AutoMigrate(model); err != nil {
+		if err := db.AutoMigrate(model); err != nil {
 			panic("failed to migrate model: " + err.Error())
 		}
 	}
 
-	util.Logger.Info("connected to db")
+	logger.Info("connected to db")
+
+	return db
 }
 
-func CloseDB() {
-	sqlDB, err := DB.DB()
+func CloseDB(db *gorm.DB, logger *slog.Logger) {
+	sqlDB, err := db.DB()
 	if err != nil {
-		util.Logger.Error("failed to get db instance", "err", err)
+		logger.Error("failed to get db instance", "err", err)
 		return
 	}
 
 	if err := sqlDB.Close(); err != nil {
-		util.Logger.Error("failed to close db", "err", err)
+		logger.Error("failed to close db", "err", err)
 		return
 	}
 
-	util.Logger.Info("db connection closed")
+	logger.Info("db connection closed")
 }
 
-func ResetDB() {
-	util.Logger.Warn("resetting db...")
-
+func ResetDB(db *gorm.DB, logger *slog.Logger) {
+	logger.Warn("resetting db...")
 	ctx := context.Background()
 	tables := []string{
 		"heart_beats",
@@ -62,11 +60,11 @@ func ResetDB() {
 	}
 
 	for _, table := range tables {
-		err := gorm.G[any](DB).Exec(ctx, "DELETE FROM "+table)
+		err := gorm.G[any](db).Exec(ctx, "DELETE FROM "+table)
 		if err != nil {
-			util.Logger.Error("failed to reset table", table, err.Error())
+			logger.Error("failed to reset table", table, err.Error())
 		}
 	}
 
-	util.Logger.Info("db is reset")
+	logger.Info("db is reset")
 }

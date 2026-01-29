@@ -22,8 +22,6 @@ type Config struct {
 	UserTokenAbsoluteExpiry int
 }
 
-var Cfg *Config
-
 func getEnvStrOrDefault(key string, defaultValue string) string {
 	value := os.Getenv(key)
 
@@ -55,8 +53,8 @@ func getEnvIntOrDefault(key string, defaultValue int) int {
 	return intValue
 }
 
-func LoadConfig() {
-	Cfg = &Config{
+func LoadConfigFromEnv() *Config {
+	return &Config{
 		GinMode:                 getEnvStrOrDefault("GIN_MODE", "debug"),
 		DbAddress:               getEnvStrOrDefault("DB_ADDRESS", "data/auth_service_db.sqlite"),
 		JwtSecret:               getEnvStrOrPanic("JWT_SECRET"),

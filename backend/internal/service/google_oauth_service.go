@@ -11,31 +11,30 @@ import (
 
 	"cloud.google.com/go/auth/credentials/idtoken"
 	"github.com/google/uuid"
-	"github.com/paularynty/transcendence/auth-service-go/internal/config"
 	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
+	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
-	"github.com/paularynty/transcendence/auth-service-go/internal/util"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
 	"gorm.io/gorm"
 )
 
 func (s *UserService) GetGoogleOAuthURL(ctx context.Context) (string, error) {
-	state, err := jwt.SignOauthStateToken()
+	state, err := jwt.SignOauthStateToken(s.Dep)
 	if err != nil {
-		util.Logger.Error("failed to sign oauth state token:", "err", err)
+		s.Dep.Logger.Error("failed to sign oauth state token:", "err", err)
 		return "", err
 	}
 
 	u, err := url.Parse(BaseGoogleOAuthURL)
 	if err != nil {
-		util.Logger.Error("failed to parse google oauth base url:", "err", err)
+		s.Dep.Logger.Error("failed to parse google oauth base url:", "err", err)
 		return "", err
 	}
 
 	q := u.Query()
-	q.Set("client_id", config.Cfg.GoogleClientId)
-	q.Set("redirect_uri", config.Cfg.GoogleRedirectUri)
+	q.Set("client_id", s.Dep.Cfg.GoogleClientId)
+	q.Set("redirect_uri", s.Dep.Cfg.GoogleRedirectUri)
 	q.Set("response_type", "code")
 	q.Set("scope", "openid email profile")
 	q.Set("state", state)
@@ -45,10 +44,10 @@ func (s *UserService) GetGoogleOAuthURL(ctx context.Context) (string, error) {
 	return u.String(), nil
 }
 
-func assembleFrontendRedirectURL(token *string, errMsg *string) string {
-	u, err := url.Parse(config.Cfg.FrontendUrl + "/user/oauth-callback-google")
+func assembleFrontendRedirectURL(dep *dependency.Dependency, token *string, errMsg *string) string {
+	u, err := url.Parse(dep.Cfg.FrontendUrl + "/user/oauth-callback-google")
 	if err != nil {
-		util.Logger.Error("failed to parse frontend redirect url:", "err", err)
+		dep.Logger.Error("failed to parse frontend redirect url:", "err", err)
 		return "/unrecovered-error"
 	}
 
@@ -64,12 +63,12 @@ func assembleFrontendRedirectURL(token *string, errMsg *string) string {
 	return u.String()
 }
 
-var ExchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
+var ExchangeCodeForTokens = func(dep *dependency.Dependency, ctx context.Context, code string) (*idtoken.Payload, error) {
 	data := url.Values{}
 	data.Set("code", code)
-	data.Set("client_id", config.Cfg.GoogleClientId)
-	data.Set("client_secret", config.Cfg.GoogleClientSecret)
-	data.Set("redirect_uri", config.Cfg.GoogleRedirectUri)
+	data.Set("client_id", dep.Cfg.GoogleClientId)
+	data.Set("client_secret", dep.Cfg.GoogleClientSecret)
+	data.Set("redirect_uri", dep.Cfg.GoogleRedirectUri)
 	data.Set("grant_type", "authorization_code")
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://oauth2.googleapis.com/token", strings.NewReader(data.Encode()))
@@ -99,7 +98,7 @@ var ExchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Pay
 		return nil, err
 	}
 
-	payload, err := idtoken.Validate(ctx, tokenResp.IdToken, config.Cfg.GoogleClientId)
+	payload, err := idtoken.Validate(ctx, tokenResp.IdToken, dep.Cfg.GoogleClientId)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +196,7 @@ func (s *UserService) createNewUserFromGoogleInfo(ctx context.Context, googleUse
 		TwoFAToken:    nil,
 	}
 
-	err := gorm.G[model.User](s.DB).Create(ctx, &modelUser)
+	err := gorm.G[model.User](s.Dep.DB).Create(ctx, &modelUser)
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			if !isRetry {
@@ -211,53 +210,53 @@ func (s *UserService) createNewUserFromGoogleInfo(ctx context.Context, googleUse
 	return &modelUser, nil
 }
 
-func HandleGoogleOAuthCallbackError(err error, errMsg string) string {
+func HandleGoogleOAuthCallbackError(dep *dependency.Dependency, err error, errMsg string) string {
 	publicMsg := "Failed to handle Google OAuth callback."
-	util.Logger.Error(errMsg, "error", err)
-	return assembleFrontendRedirectURL(nil, &publicMsg)
+	dep.Logger.Error(errMsg, "error", err)
+	return assembleFrontendRedirectURL(dep, nil, &publicMsg)
 }
 
 func (s *UserService) HandleGoogleOAuthCallback(ctx context.Context, code string, state string) string {
 	var finalUserID uint
 
-	claims, err := jwt.ValidateOauthStateToken(state)
+	claims, err := jwt.ValidateOauthStateToken(s.Dep, state)
 	if err != nil || claims.Type != jwt.GoogleOAuthStateType {
-		return HandleGoogleOAuthCallbackError(err, "invalid oauth state token")
+		return HandleGoogleOAuthCallbackError(s.Dep, err, "invalid oauth state token")
 	}
 
-	googlePayload, err := ExchangeCodeForTokens(ctx, code)
+	googlePayload, err := ExchangeCodeForTokens(s.Dep, ctx, code)
 	if err != nil {
-		return HandleGoogleOAuthCallbackError(err, "failed to exchange code for tokens")
+		return HandleGoogleOAuthCallbackError(s.Dep, err, "failed to exchange code for tokens")
 	}
 
 	googleUserInfo, err := FetchGoogleUserInfo(googlePayload)
 	if err != nil {
-		return HandleGoogleOAuthCallbackError(err, "failed to fetch google user info from id token")
+		return HandleGoogleOAuthCallbackError(s.Dep, err, "failed to fetch google user info from id token")
 	}
 
-	modelUser, err := gorm.G[model.User](s.DB).Where("google_oauth_id = ?", googleUserInfo.ID).First(ctx)
+	modelUser, err := gorm.G[model.User](s.Dep.DB).Where("google_oauth_id = ?", googleUserInfo.ID).First(ctx)
 	if err == nil { // User with this Google OAuth ID exists, log them in
 		finalUserID = modelUser.ID
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return HandleGoogleOAuthCallbackError(err, "failed to query user by google oauth id")
+		return HandleGoogleOAuthCallbackError(s.Dep, err, "failed to query user by google oauth id")
 	} else {
 		// No user with this Google OAuth ID, check if a user with this email exists
-		modelUser, err = gorm.G[model.User](s.DB).Where("email = ?", googleUserInfo.Email).First(ctx)
+		modelUser, err = gorm.G[model.User](s.Dep.DB).Where("email = ?", googleUserInfo.Email).First(ctx)
 		if err == nil { // User with this email exists, link Google account
 
 			err = s.linkGoogleAccountToExistingUser(ctx, &modelUser, googleUserInfo)
 			if err != nil { // Failed to link Google account
-				return HandleGoogleOAuthCallbackError(err, "failed to link google account to existing user")
+				return HandleGoogleOAuthCallbackError(s.Dep, err, "failed to link google account to existing user")
 			}
 			// Successfully linked Google account
 			finalUserID = modelUser.ID
 		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return HandleGoogleOAuthCallbackError(err, "failed to query user by email")
+			return HandleGoogleOAuthCallbackError(s.Dep, err, "failed to query user by email")
 		} else {
 			// No user with this email exists, create a new user
 			newUser, err := s.createNewUserFromGoogleInfo(ctx, googleUserInfo, false)
 			if err != nil {
-				return HandleGoogleOAuthCallbackError(err, "failed to create new user from google info")
+				return HandleGoogleOAuthCallbackError(s.Dep, err, "failed to create new user from google info")
 			}
 
 			finalUserID = newUser.ID
@@ -265,13 +264,13 @@ func (s *UserService) HandleGoogleOAuthCallback(ctx context.Context, code string
 	}
 
 	if finalUserID == 0 {
-		return HandleGoogleOAuthCallbackError(errors.New("finalUserID is zero"), "internal error determining final user ID")
+		return HandleGoogleOAuthCallbackError(s.Dep, errors.New("finalUserID is zero"), "internal error determining final user ID")
 	}
 
 	userToken, err := s.issueNewTokenForUser(ctx, finalUserID, false)
 	if err != nil {
-		return HandleGoogleOAuthCallbackError(err, "failed to issue new token for user")
+		return HandleGoogleOAuthCallbackError(s.Dep, err, "failed to issue new token for user")
 	}
 
-	return assembleFrontendRedirectURL(&userToken, nil)
+	return assembleFrontendRedirectURL(s.Dep, &userToken, nil)
 }

@@ -7,10 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/paularynty/transcendence/auth-service-go/internal/config"
 	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
+	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
-	"github.com/paularynty/transcendence/auth-service-go/internal/util"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -19,19 +18,18 @@ import (
 
 const HeartBeatPrefix = "heartbeat:"
 
-func NewUserService(db *gorm.DB, redis *redis.Client) *UserService {
+func NewUserService(dep *dependency.Dependency) *UserService {
 
-	if db == nil {
+	if dep.DB == nil {
 		panic("UserService: db is nil")
 	}
 
-	if config.Cfg.IsRedisEnabled && redis == nil {
+	if dep.Cfg.IsRedisEnabled && dep.Redis == nil {
 		panic("UserService: redis is enabled but redis client is nil")
 	}
 
 	return &UserService{
-		DB:    db,
-		Redis: redis,
+		Dep:  dep,
 	}
 }
 
@@ -102,7 +100,7 @@ func (s *UserService) updateHeartBeatByDB(userID uint) {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 
-		err := s.DB.WithContext(ctx).Clauses(clause.OnConflict{
+		err := s.Dep.DB.WithContext(ctx).Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "user_id"}},
 			UpdateAll: true,
 		}).Create(&model.HeartBeat{
@@ -111,7 +109,7 @@ func (s *UserService) updateHeartBeatByDB(userID uint) {
 		}).Error
 
 		if err != nil {
-			util.Logger.Warn("failed to update heartbeat for user", fmt.Sprint(userID), err.Error())
+			s.Dep.Logger.Warn("failed to update heartbeat for user", fmt.Sprint(userID), err.Error())
 		}
 	}()
 }
@@ -121,19 +119,19 @@ func (s *UserService) updateHeartBeatByRedis(userID uint) {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 
-		err := s.Redis.ZAdd(ctx, HeartBeatPrefix, redis.Z{
+		err := s.Dep.Redis.ZAdd(ctx, HeartBeatPrefix, redis.Z{
 			Score:  float64(time.Now().Unix()),
 			Member: userID,
 		}).Err()
 
 		if err != nil {
-			util.Logger.Warn("failed to update heartbeat for user", fmt.Sprint(userID), err.Error())
+			s.Dep.Logger.Warn("failed to update heartbeat for user", fmt.Sprint(userID), err.Error())
 		}
 	}()
 }
 
 func (s *UserService) updateHeartBeat(userID uint) {
-	if config.Cfg.IsRedisEnabled {
+	if s.Dep.Cfg.IsRedisEnabled {
 		s.updateHeartBeatByRedis(userID)
 	} else {
 		s.updateHeartBeatByDB(userID)
@@ -141,7 +139,7 @@ func (s *UserService) updateHeartBeat(userID uint) {
 }
 
 func (s *UserService) getOnlineStatusByDB(ctx context.Context) ([]model.HeartBeat, error) {
-	onlineStatus, err := gorm.G[model.HeartBeat](s.DB).Where("last_seen_at > ?", time.Now().Add(-2*time.Minute)).Find(ctx)
+	onlineStatus, err := gorm.G[model.HeartBeat](s.Dep.DB).Where("last_seen_at > ?", time.Now().Add(-2*time.Minute)).Find(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -155,9 +153,9 @@ func (s *UserService) clearExpiredHeartBeatsByRedis() {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 
-		err := s.Redis.ZRemRangeByScore(ctx, HeartBeatPrefix, "-inf", strconv.FormatInt(time.Now().Add(-2*time.Minute).Unix(), 10)).Err()
+		err := s.Dep.Redis.ZRemRangeByScore(ctx, HeartBeatPrefix, "-inf", strconv.FormatInt(time.Now().Add(-2*time.Minute).Unix(), 10)).Err()
 		if err != nil {
-			util.Logger.Warn("failed to clear expired heartbeats from redis", "err", err)
+			s.Dep.Logger.Warn("failed to clear expired heartbeats from redis", "err", err)
 		}
 	}()
 }
@@ -165,7 +163,7 @@ func (s *UserService) clearExpiredHeartBeatsByRedis() {
 func (s *UserService) getOnlineStatusByRedis(ctx context.Context) ([]model.HeartBeat, error) {
 	heartBeats := make([]model.HeartBeat, 0)
 
-	zs, err := s.Redis.ZRangeByScoreWithScores(ctx, HeartBeatPrefix, &redis.ZRangeBy{
+	zs, err := s.Dep.Redis.ZRangeByScoreWithScores(ctx, HeartBeatPrefix, &redis.ZRangeBy{
 		Min: strconv.FormatInt(time.Now().Add(-2*time.Minute).Unix(), 10),
 		Max: "+inf",
 	}).Result()
@@ -192,7 +190,7 @@ func (s *UserService) getOnlineStatusByRedis(ctx context.Context) ([]model.Heart
 }
 
 func (s *UserService) getOnlineStatus(ctx context.Context) ([]model.HeartBeat, error) {
-	if config.Cfg.IsRedisEnabled {
+	if s.Dep.Cfg.IsRedisEnabled {
 		return s.getOnlineStatusByRedis(ctx)
 	} else {
 		return s.getOnlineStatusByDB(ctx)
@@ -206,18 +204,18 @@ func buildTokenKey(userID uint, token string) string {
 func (s *UserService) issueNewTokenForUserByDB(ctx context.Context, userID uint, revokeAllTokens bool) (string, error) {
 
 	if revokeAllTokens {
-		res := s.DB.WithContext(ctx).Exec("DELETE FROM tokens WHERE user_id = ?", userID)
+		res := s.Dep.DB.WithContext(ctx).Exec("DELETE FROM tokens WHERE user_id = ?", userID)
 		if res.Error != nil {
 			return "", res.Error
 		}
 	}
 
-	token, err := jwt.SignUserToken(userID)
+	token, err := jwt.SignUserToken(s.Dep, userID)
 	if err != nil {
 		return "", err
 	}
 
-	err = gorm.G[model.Token](s.DB).Create(ctx, &model.Token{
+	err = gorm.G[model.Token](s.Dep.DB).Create(ctx, &model.Token{
 		UserID: userID,
 		Token:  token,
 	})
@@ -234,9 +232,9 @@ func (s *UserService) issueNewTokenForUserByRedis(ctx context.Context, userID ui
 
 	if revokeAllTokens {
 		// A rough way to delete all tokens for the user
-		iter := s.Redis.Scan(ctx, 0, buildTokenKey(userID, "*"), 100).Iterator()
+		iter := s.Dep.Redis.Scan(ctx, 0, buildTokenKey(userID, "*"), 100).Iterator()
 		for iter.Next(ctx) {
-			err := s.Redis.Del(ctx, iter.Val()).Err()
+			err := s.Dep.Redis.Del(ctx, iter.Val()).Err()
 			if err != nil {
 				return "", err
 			}
@@ -246,12 +244,12 @@ func (s *UserService) issueNewTokenForUserByRedis(ctx context.Context, userID ui
 		}
 	}
 
-	token, err := jwt.SignUserToken(userID)
+	token, err := jwt.SignUserToken(s.Dep, userID)
 	if err != nil {
 		return "", err
 	}
 
-	err = s.Redis.Set(ctx, buildTokenKey(userID, token), "", time.Duration(config.Cfg.UserTokenExpiry)*time.Second).Err()
+	err = s.Dep.Redis.Set(ctx, buildTokenKey(userID, token), "", time.Duration(s.Dep.Cfg.UserTokenExpiry)*time.Second).Err()
 	if err != nil {
 		return "", err
 	}
@@ -262,7 +260,7 @@ func (s *UserService) issueNewTokenForUserByRedis(ctx context.Context, userID ui
 }
 
 func (s *UserService) issueNewTokenForUser(ctx context.Context, userID uint, revokeAllTokens bool) (string, error) {
-	if config.Cfg.IsRedisEnabled {
+	if s.Dep.Cfg.IsRedisEnabled {
 		return s.issueNewTokenForUserByRedis(ctx, userID, revokeAllTokens)
 	} else {
 		return s.issueNewTokenForUserByDB(ctx, userID, revokeAllTokens)
