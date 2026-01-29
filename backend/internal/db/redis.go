@@ -2,18 +2,16 @@ package db
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/paularynty/transcendence/auth-service-go/internal/config"
-	"github.com/paularynty/transcendence/auth-service-go/internal/util"
 	"github.com/redis/go-redis/v9"
 )
 
-var Redis *redis.Client
-
-func ConnectRedis(redisURL string) {
-	if !config.Cfg.IsRedisEnabled {
-		util.Logger.Info("redis is disabled by config")
-		return
+func GetRedis(redisURL string, cfg *config.Config, logger *slog.Logger) *redis.Client {
+	if !cfg.IsRedisEnabled {
+		logger.Info("redis is disabled by config")
+		return nil
 	}
 
 	opt, err := redis.ParseURL(redisURL)
@@ -31,20 +29,20 @@ func ConnectRedis(redisURL string) {
 		panic("failed to connect to redis: " + err.Error())
 	}
 
-	Redis = client
+	logger.Info("connected to redis")
 
-	util.Logger.Info("connected to redis")
+	return client
 }
 
-func CloseRedis() {
-	if Redis == nil {
+func CloseRedis(client *redis.Client, logger *slog.Logger) {
+	if client == nil {
 		return
 	}
 
-	err := Redis.Close()
+	err := client.Close()
 	if err != nil {
-		util.Logger.Error("failed to close redis connection", "error", err)
+		logger.Error("failed to close redis connection", "error", err)
 	} else {
-		util.Logger.Info("redis connection closed")
+		logger.Info("redis connection closed")
 	}
 }

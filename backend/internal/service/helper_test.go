@@ -61,7 +61,7 @@ func TestHelperFunctions(t *testing.T) {
 
 	t.Run("UpdateHeartBeat", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db, nil)
+		svc := NewUserService(newTestDependency(db, nil))
 
 		// Create user first to satisfy FK
 		_, _ = svc.CreateUser(context.Background(), &dto.CreateUserRequest{
@@ -83,7 +83,7 @@ func TestHelperFunctions(t *testing.T) {
 
 	t.Run("IssueNewTokenForUser", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db, nil)
+		svc := NewUserService(newTestDependency(db, nil))
 
 		// Create user first
 		_, _ = svc.CreateUser(context.Background(), &dto.CreateUserRequest{
@@ -113,7 +113,7 @@ func TestHelperFunctions(t *testing.T) {
 
 	t.Run("IssueNewTokenForUser_DBError", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(db, nil)
+		svc := NewUserService(newTestDependency(db, nil))
 		sqlDB, _ := db.DB()
 		_ = sqlDB.Close()
 

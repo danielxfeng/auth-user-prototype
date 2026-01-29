@@ -11,30 +11,23 @@ import (
 	"github.com/paularynty/transcendence/auth-service-go/internal/config"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
+	"github.com/paularynty/transcendence/auth-service-go/internal/testutil"
 	"github.com/redis/go-redis/v9"
 )
 
-func withRedisTestExpiries(t *testing.T, userTTLSeconds int, absoluteTTLSeconds int) func() {
-	t.Helper()
-
-	prevCfg := config.Cfg
-	cfgCopy := *prevCfg
-	cfgCopy.UserTokenExpiry = userTTLSeconds
-	cfgCopy.UserTokenAbsoluteExpiry = absoluteTTLSeconds
-	config.Cfg = &cfgCopy
-
-	return func() {
-		config.Cfg = prevCfg
-	}
+func withRedisTestExpiries(cfg *config.Config, userTTLSeconds int, absoluteTTLSeconds int) {
+	cfg.UserTokenExpiry = userTTLSeconds
+	cfg.UserTokenAbsoluteExpiry = absoluteTTLSeconds
 }
 
 func TestRedisTokenLifecycle(t *testing.T) {
 	db := setupTestDB(t.Name())
-	mr, redisClient, cleanupRedis := setupTestRedis(t)
+	cfg := testutil.NewTestConfig()
+	withRedisTestExpiries(cfg, 10, 30)
+	mr, redisClient, cleanupRedis := setupTestRedis(t, cfg)
 	defer cleanupRedis()
-	defer withRedisTestExpiries(t, 10, 30)()
 
-	svc := NewUserService(db, redisClient)
+	svc := NewUserService(newTestDependencyWithConfig(cfg, db, redisClient))
 	ctx := context.Background()
 
 	userResp, err := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -95,10 +88,11 @@ func TestRedisTokenLifecycle(t *testing.T) {
 
 func TestRedisHeartbeatOnlineStatusAndCleanup(t *testing.T) {
 	db := setupTestDB(t.Name())
-	_, redisClient, cleanupRedis := setupTestRedis(t)
+	cfg := testutil.NewTestConfig()
+	_, redisClient, cleanupRedis := setupTestRedis(t, cfg)
 	defer cleanupRedis()
 
-	svc := NewUserService(db, redisClient)
+	svc := NewUserService(newTestDependencyWithConfig(cfg, db, redisClient))
 	ctx := context.Background()
 
 	u1, err := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -155,10 +149,11 @@ func TestRedisHeartbeatOnlineStatusAndCleanup(t *testing.T) {
 
 func TestRedisLoginUpdatesHeartbeat(t *testing.T) {
 	db := setupTestDB(t.Name())
-	_, redisClient, cleanupRedis := setupTestRedis(t)
+	cfg := testutil.NewTestConfig()
+	_, redisClient, cleanupRedis := setupTestRedis(t, cfg)
 	defer cleanupRedis()
 
-	svc := NewUserService(db, redisClient)
+	svc := NewUserService(newTestDependencyWithConfig(cfg, db, redisClient))
 	ctx := context.Background()
 
 	created, err := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -195,10 +190,11 @@ func TestRedisLoginUpdatesHeartbeat(t *testing.T) {
 
 func TestRedisLogoutRevokesAllTokens(t *testing.T) {
 	db := setupTestDB(t.Name())
-	mr, redisClient, cleanupRedis := setupTestRedis(t)
+	cfg := testutil.NewTestConfig()
+	mr, redisClient, cleanupRedis := setupTestRedis(t, cfg)
 	defer cleanupRedis()
 
-	svc := NewUserService(db, redisClient)
+	svc := NewUserService(newTestDependencyWithConfig(cfg, db, redisClient))
 	ctx := context.Background()
 
 	userResp, err := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -242,10 +238,11 @@ func TestRedisLogoutRevokesAllTokens(t *testing.T) {
 
 func TestRedisDeleteUserRevokesAllTokens(t *testing.T) {
 	db := setupTestDB(t.Name())
-	mr, redisClient, cleanupRedis := setupTestRedis(t)
+	cfg := testutil.NewTestConfig()
+	mr, redisClient, cleanupRedis := setupTestRedis(t, cfg)
 	defer cleanupRedis()
 
-	svc := NewUserService(db, redisClient)
+	svc := NewUserService(newTestDependencyWithConfig(cfg, db, redisClient))
 	ctx := context.Background()
 
 	userResp, err := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -289,10 +286,11 @@ func TestRedisDeleteUserRevokesAllTokens(t *testing.T) {
 
 func TestRedisUpdatePasswordRevokesOldTokens(t *testing.T) {
 	db := setupTestDB(t.Name())
-	mr, redisClient, cleanupRedis := setupTestRedis(t)
+	cfg := testutil.NewTestConfig()
+	mr, redisClient, cleanupRedis := setupTestRedis(t, cfg)
 	defer cleanupRedis()
 
-	svc := NewUserService(db, redisClient)
+	svc := NewUserService(newTestDependencyWithConfig(cfg, db, redisClient))
 	ctx := context.Background()
 
 	userResp, err := svc.CreateUser(ctx, &dto.CreateUserRequest{

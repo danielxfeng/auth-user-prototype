@@ -8,14 +8,13 @@ import (
 	"github.com/lmittmann/tint"
 )
 
-var Logger *slog.Logger
-
-func InitLogger(level slog.Leveler) {
-	Logger = slog.New(tint.NewHandler(os.Stdout, &tint.Options{
+func GetLogger(level slog.Leveler) *slog.Logger {
+	logger := slog.New(tint.NewHandler(os.Stdout, &tint.Options{
 		Level:      level,
 		TimeFormat: time.Kitchen,
 		AddSource:  true,
 	}))
 
-	slog.SetDefault(Logger)
+	slog.SetDefault(logger)
+	return logger
 }

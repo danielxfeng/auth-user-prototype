@@ -24,10 +24,11 @@ import (
 
 	"github.com/gin-contrib/cors"
 
+	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 )
 
-func SetupRouter(logger *slog.Logger) *gin.Engine {
+func SetupRouter(dep *dependency.Dependency) *gin.Engine {
 	r := gin.New()
 
 	logConfig := sloggin.Config{
@@ -59,39 +60,40 @@ func SetupRouter(logger *slog.Logger) *gin.Engine {
 	r.Use(rateLimiter.RateLimit())
 
 	r.Use(middleware.PanicHandler())
-	r.Use(sloggin.NewWithConfig(logger, logConfig))
+	r.Use(sloggin.NewWithConfig(dep.Logger, logConfig))
 	r.Use(middleware.ErrorHandler())
 
 	return r
 }
 
+func initDependency() *dependency.Dependency {
+	logger := util.GetLogger(slog.LevelInfo)
+	cfg := config.LoadConfigFromEnv()
+	myDB := db.GetDB(cfg.DbAddress, logger)
+	redis := db.GetRedis(cfg.RedisURL, cfg, logger)
+
+	return dependency.NewDependency(cfg, myDB, redis, logger)
+}
+
 // @title Auth Service API
 // @version 1.0
-// @description Auth service for Transcendence
+// @description Auth service
 // @BasePath /api
 func main() {
 	// config
 	_ = godotenv.Load()
 
-	config.LoadConfig()
-
-	// logger
-	util.InitLogger(slog.LevelInfo)
+	// init dependency
+	dep := initDependency()
+	defer db.CloseDB(dep.DB, dep.Logger)
+	defer db.CloseRedis(dep.Redis, dep.Logger)
 
 	// validator
 	dto.InitValidator()
 
-	// database
-	db.ConnectDB(config.Cfg.DbAddress)
-	defer db.CloseDB()
-
-	db.ConnectRedis(config.Cfg.RedisURL)
-	defer db.CloseRedis()
-
 	// router
-	r := SetupRouter(util.Logger)
-	routers.UsersRouter(r.Group("/api/users"))
-	routers.DevRouter(r.Group("/api/dev"))
+	r := SetupRouter(dep)
+	routers.UsersRouter(r.Group("/api/users"), dep)
 
 	// Health check
 	r.GET("/api/ping", func(c *gin.Context) {
@@ -104,7 +106,7 @@ func main() {
 	r.GET("/api/docs/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	if err := r.Run(":3003"); err != nil {
-		util.Logger.Error("failed to start server", "err", err)
+		dep.Logger.Error("failed to start server", "err", err)
 		os.Exit(1)
 	}
 }

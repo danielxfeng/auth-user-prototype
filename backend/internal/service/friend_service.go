@@ -11,7 +11,7 @@ import (
 )
 
 func (s *UserService) GetAllUsersLimitedInfo(ctx context.Context) ([]dto.SimpleUser, error) {
-	modelUsers, err := gorm.G[model.User](s.DB).Find(ctx)
+	modelUsers, err := gorm.G[model.User](s.Dep.DB).Find(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +25,7 @@ func (s *UserService) GetAllUsersLimitedInfo(ctx context.Context) ([]dto.SimpleU
 }
 
 func (s *UserService) GetUserFriends(ctx context.Context, userID uint) ([]dto.FriendResponse, error) {
-	friends, err := gorm.G[model.Friend](s.DB).Preload("Friend", nil).Where("user_id = ?", userID).Find(ctx)
+	friends, err := gorm.G[model.Friend](s.Dep.DB).Preload("Friend", nil).Where("user_id = ?", userID).Find(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func (s *UserService) AddNewFriend(ctx context.Context, userID uint, request *dt
 		FriendID: request.UserID,
 	}
 
-	err := gorm.G[model.Friend](s.DB).Create(ctx, &newFriend)
+	err := gorm.G[model.Friend](s.Dep.DB).Create(ctx, &newFriend)
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return middleware.NewAuthError(409, "friend already added")

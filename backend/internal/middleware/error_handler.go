@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
@@ -33,18 +35,22 @@ func ErrorHandler() gin.HandlerFunc {
 
 		err := c.Errors.Last().Err
 
+		var authErr *AuthError
+
 		// Handle AuthError specifically
-		if authErr, ok := err.(*AuthError); ok {
+		if errors.As(err, &authErr) {
 			c.AbortWithStatusJSON(authErr.Status, gin.H{
 				"error": authErr.Message,
 			})
 			return
 		}
 
+		var validationErr validator.ValidationErrors
+
 		// Handle validation errors
-		if ve, ok := err.(validator.ValidationErrors); ok {
-			messages := make([]string, 0, len(ve))
-			for _, fe := range ve {
+		if errors.As(err, &validationErr) {
+			messages := make([]string, 0, len(validationErr))
+			for _, fe := range validationErr {
 				messages = append(messages, fe.Error())
 			}
 			c.AbortWithStatusJSON(400, gin.H{

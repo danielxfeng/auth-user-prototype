@@ -3,15 +3,15 @@ package routers
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/paularynty/transcendence/auth-service-go/internal/db"
+	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 	"github.com/paularynty/transcendence/auth-service-go/internal/handler"
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 	"github.com/paularynty/transcendence/auth-service-go/internal/service"
 )
 
-func UsersRouter(r *gin.RouterGroup) {
-	h := &handler.UserHandler{Service: service.NewUserService(db.DB, db.Redis)}
+func UsersRouter(r *gin.RouterGroup, dep *dependency.Dependency) {
+	h := &handler.UserHandler{Service: service.NewUserService(dep)}
 
 	// Public endpoints
 	r.POST("/", middleware.ValidateBody[dto.CreateUserRequest](), h.CreateUserHandler)
@@ -22,7 +22,7 @@ func UsersRouter(r *gin.RouterGroup) {
 
 	// Authenticated endpoints
 	auth := r.Group("")
-	auth.Use(middleware.Auth())
+	auth.Use(middleware.Auth(dep))
 
 	auth.GET("/me", h.GetLoggedUserProfileHandler)
 	auth.PUT("/password", middleware.ValidateBody[dto.UpdateUserPasswordRequest](), h.UpdateLoggedUserPasswordHandler)

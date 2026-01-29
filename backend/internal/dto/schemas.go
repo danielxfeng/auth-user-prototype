@@ -80,15 +80,15 @@ func registerUsernameTranslation(v *validator.Validate, trans ut.Translator) {
 // Password
 
 type Password struct {
-	Password string `json:"password" validate:"required,trim,min=3,max=20,password"`
+	Password string `json:"password" validate:"required,trim,min=6,max=20,password"`
 }
 
 type OldPassword struct {
-	OldPassword string `json:"oldPassword" validate:"required,trim,password,min=3,max=20"`
+	OldPassword string `json:"oldPassword" validate:"required,trim,password,min=6,max=20"`
 }
 
 type NewPassword struct {
-	NewPassword string `json:"newPassword" validate:"required,trim,password,min=3,max=20"`
+	NewPassword string `json:"newPassword" validate:"required,trim,password,min=6,max=20"`
 }
 
 // Contains only letters, numbers, ".", "_" or "-"

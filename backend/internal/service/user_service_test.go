@@ -10,80 +10,109 @@ import (
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 )
 
+func requireAuthStatus(t *testing.T, err error, status int) {
+	t.Helper()
+	authErr, ok := err.(*middleware.AuthError)
+	if !ok || authErr.Status != status {
+		t.Fatalf("expected %d error, got %v", status, err)
+	}
+}
+
 func TestCreateUser(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db, nil)
+	svc := NewUserService(newTestDependency(db, nil))
 	ctx := context.Background()
 
-	t.Run("Success", func(t *testing.T) {
-		req := &dto.CreateUserRequest{
-			User: dto.User{
-				UserName: dto.UserName{Username: "testuser"},
-				Email:    "test@example.com",
+	cases := []struct {
+		name          string
+		req           *dto.CreateUserRequest
+		setup         func()
+		wantErrStatus int
+	}{
+		{
+			name: "Success",
+			req: &dto.CreateUserRequest{
+				User: dto.User{
+					UserName: dto.UserName{Username: "testuser"},
+					Email:    "test@example.com",
+				},
+				Password: dto.Password{Password: "password123"},
 			},
-			Password: dto.Password{Password: "password123"},
-		}
-
-		resp, err := svc.CreateUser(ctx, req)
-		if err != nil {
-			t.Fatalf("expected no error, got %v", err)
-		}
-
-		if resp.Username != req.Username {
-			t.Errorf("expected username %s, got %s", req.Username, resp.Username)
-		}
-		if resp.Email != req.Email {
-			t.Errorf("expected email %s, got %s", req.Email, resp.Email)
-		}
-		if resp.ID == 0 {
-			t.Error("expected valid ID")
-		}
-	})
-
-	t.Run("DuplicateUsername", func(t *testing.T) {
-		req := &dto.CreateUserRequest{
-			User: dto.User{
-				UserName: dto.UserName{Username: "testuser"},
-				Email:    "other@example.com",
+		},
+		{
+			name: "DuplicateUsername",
+			req: &dto.CreateUserRequest{
+				User: dto.User{
+					UserName: dto.UserName{Username: "testuser"},
+					Email:    "other@example.com",
+				},
+				Password: dto.Password{Password: "password123"},
 			},
-			Password: dto.Password{Password: "password123"},
-		}
-
-		_, err := svc.CreateUser(ctx, req)
-		if err == nil {
-			t.Fatal("expected error for duplicate username")
-		}
-
-		authErr, ok := err.(*middleware.AuthError)
-		if !ok || authErr.Status != 409 {
-			t.Errorf("expected 409 error, got %v", err)
-		}
-	})
-
-	t.Run("DuplicateEmail", func(t *testing.T) {
-		req := &dto.CreateUserRequest{
-			User: dto.User{
-				UserName: dto.UserName{Username: "otheruser"},
-				Email:    "test@example.com",
+			setup: func() {
+				_, _ = svc.CreateUser(ctx, &dto.CreateUserRequest{
+					User: dto.User{
+						UserName: dto.UserName{Username: "testuser"},
+						Email:    "test@example.com",
+					},
+					Password: dto.Password{Password: "password123"},
+				})
 			},
-			Password: dto.Password{Password: "password123"},
-		}
+			wantErrStatus: 409,
+		},
+		{
+			name: "DuplicateEmail",
+			req: &dto.CreateUserRequest{
+				User: dto.User{
+					UserName: dto.UserName{Username: "otheruser"},
+					Email:    "test@example.com",
+				},
+				Password: dto.Password{Password: "password123"},
+			},
+			setup: func() {
+				_, _ = svc.CreateUser(ctx, &dto.CreateUserRequest{
+					User: dto.User{
+						UserName: dto.UserName{Username: "seeduser"},
+						Email:    "test@example.com",
+					},
+					Password: dto.Password{Password: "password123"},
+				})
+			},
+			wantErrStatus: 409,
+		},
+	}
 
-		_, err := svc.CreateUser(ctx, req)
-		if err == nil {
-			t.Fatal("expected error for duplicate email")
-		}
-
-		authErr, ok := err.(*middleware.AuthError)
-		if !ok || authErr.Status != 409 {
-			t.Errorf("expected 409 error, got %v", err)
-		}
-	})
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.setup != nil {
+				tc.setup()
+			}
+			resp, err := svc.CreateUser(ctx, tc.req)
+			if tc.wantErrStatus == 0 {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				if resp.Username != tc.req.Username {
+					t.Errorf("expected username %s, got %s", tc.req.Username, resp.Username)
+				}
+				if resp.Email != tc.req.Email {
+					t.Errorf("expected email %s, got %s", tc.req.Email, resp.Email)
+				}
+				if resp.ID == 0 {
+					t.Error("expected valid ID")
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("expected error for %s", tc.name)
+			}
+			requireAuthStatus(t, err, tc.wantErrStatus)
+		})
+	}
 }
 
 func TestLoginUser(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db, nil)
+	svc := NewUserService(newTestDependency(db, nil))
 	ctx := context.Background()
 
 	// Setup user
@@ -232,7 +261,7 @@ func TestLoginUser(t *testing.T) {
 
 func TestGetUserByID(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db, nil)
+	svc := NewUserService(newTestDependency(db, nil))
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -243,31 +272,38 @@ func TestGetUserByID(t *testing.T) {
 		Password: dto.Password{Password: "pass"},
 	})
 
-	t.Run("Success", func(t *testing.T) {
-		got, err := svc.GetUserByID(ctx, u.ID)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if got.ID != u.ID {
-			t.Errorf("want ID %d, got %d", u.ID, got.ID)
-		}
-	})
+	cases := []struct {
+		name          string
+		userID        uint
+		wantErrStatus int
+	}{
+		{"Success", u.ID, 0},
+		{"NotFound", 9999, 404},
+	}
 
-	t.Run("NotFound", func(t *testing.T) {
-		_, err := svc.GetUserByID(ctx, 9999)
-		if err == nil {
-			t.Fatal("expected error")
-		}
-		authErr, ok := err.(*middleware.AuthError)
-		if !ok || authErr.Status != 404 {
-			t.Errorf("expected 404 error, got %v", err)
-		}
-	})
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := svc.GetUserByID(ctx, tc.userID)
+			if tc.wantErrStatus == 0 {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if got.ID != u.ID {
+					t.Errorf("want ID %d, got %d", u.ID, got.ID)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatal("expected error")
+			}
+			requireAuthStatus(t, err, tc.wantErrStatus)
+		})
+	}
 }
 
 func TestUpdateUserPassword(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db, nil)
+	svc := NewUserService(newTestDependency(db, nil))
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -292,59 +328,62 @@ func TestUpdateUserPassword(t *testing.T) {
 			t.Error("expected new token")
 		}
 
-		// Verify new password works
 		loginReq := &dto.LoginUserRequest{
 			Identifier: dto.Identifier{Identifier: "passupdate"},
 			Password:   dto.Password{Password: "newpass"},
 		}
-		_, err = svc.LoginUser(ctx, loginReq)
-		if err != nil {
+		if _, err := svc.LoginUser(ctx, loginReq); err != nil {
 			t.Error("failed to login with new password")
 		}
 	})
 
-	t.Run("InvalidOldPassword", func(t *testing.T) {
-		req := &dto.UpdateUserPasswordRequest{
-			OldPassword: dto.OldPassword{OldPassword: "wrongold"},
-			NewPassword: dto.NewPassword{NewPassword: "newpass2"},
-		}
-		_, err := svc.UpdateUserPassword(ctx, u.ID, req)
-		if err == nil {
-			t.Fatal("expected error")
-		}
-		authErr, ok := err.(*middleware.AuthError)
-		if !ok || authErr.Status != 401 {
-			t.Errorf("expected 401 error, got %v", err)
-		}
-	})
+	errorCases := []struct {
+		name          string
+		setup         func() uint
+		req           *dto.UpdateUserPasswordRequest
+		wantErrStatus int
+	}{
+		{
+			name: "InvalidOldPassword",
+			setup: func() uint {
+				return u.ID
+			},
+			req: &dto.UpdateUserPasswordRequest{
+				OldPassword: dto.OldPassword{OldPassword: "wrongold"},
+				NewPassword: dto.NewPassword{NewPassword: "newpass2"},
+			},
+			wantErrStatus: 401,
+		},
+		{
+			name: "OAuthUser",
+			setup: func() uint {
+				oauthUser := dto.GoogleUserData{ID: "passoauth", Email: "passoauth@e.com"}
+				user, _ := svc.createNewUserFromGoogleInfo(ctx, &oauthUser, false)
+				return user.ID
+			},
+			req: &dto.UpdateUserPasswordRequest{
+				OldPassword: dto.OldPassword{OldPassword: "any"},
+				NewPassword: dto.NewPassword{NewPassword: "new"},
+			},
+			wantErrStatus: 400,
+		},
+	}
 
-	t.Run("OAuthUser", func(t *testing.T) {
-		oauthUser := dto.GoogleUserData{
-			ID:    "passoauth",
-			Email: "passoauth@e.com",
-		}
-		user, _ := svc.createNewUserFromGoogleInfo(ctx, &oauthUser, false)
-
-		req := &dto.UpdateUserPasswordRequest{
-			OldPassword: dto.OldPassword{OldPassword: "any"},
-			NewPassword: dto.NewPassword{NewPassword: "new"},
-		}
-
-		_, err := svc.UpdateUserPassword(ctx, user.ID, req)
-		if err == nil {
-			t.Fatal("expected error for oauth user")
-		}
-		authErr, ok := err.(*middleware.AuthError)
-		if !ok || authErr.Status != 400 {
-			t.Errorf("expected 400 error, got %v", err)
-		}
-	})
+	for _, tc := range errorCases {
+		t.Run(tc.name, func(t *testing.T) {
+			userID := tc.setup()
+			_, err := svc.UpdateUserPassword(ctx, userID, tc.req)
+			if err == nil {
+				t.Fatal("expected error")
+			}
+			requireAuthStatus(t, err, tc.wantErrStatus)
+		})
+	}
 
 	t.Run("InvalidHash", func(t *testing.T) {
-		// Manually create user with invalid hash
 		_, _ = svc.CreateUser(ctx, &dto.CreateUserRequest{
 			User:     dto.User{UserName: dto.UserName{Username: "badhash2"}, Email: "badhash2@e.com"},
-			Password: dto.Password{Password: "p"},
+			Password: dto.Password{Password: "password123"},
 		})
 		badHash := "invalid_hash"
 		var user model.User
@@ -352,7 +391,7 @@ func TestUpdateUserPassword(t *testing.T) {
 		db.Model(&user).Update("password_hash", badHash)
 
 		req := &dto.UpdateUserPasswordRequest{
-			OldPassword: dto.OldPassword{OldPassword: "p"},
+			OldPassword: dto.OldPassword{OldPassword: "password123"},
 			NewPassword: dto.NewPassword{NewPassword: "new"},
 		}
 
@@ -360,7 +399,6 @@ func TestUpdateUserPassword(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error")
 		}
-		// Should return raw error
 		if _, ok := err.(*middleware.AuthError); ok {
 			t.Error("expected raw error")
 		}
@@ -369,7 +407,7 @@ func TestUpdateUserPassword(t *testing.T) {
 
 func TestUpdateUserProfile(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db, nil)
+	svc := NewUserService(newTestDependency(db, nil))
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -380,56 +418,69 @@ func TestUpdateUserProfile(t *testing.T) {
 		Password: dto.Password{Password: "pass"},
 	})
 
-	t.Run("Success", func(t *testing.T) {
-		newAvatar := "new_avatar.png"
-		req := &dto.UpdateUserRequest{
-			User: dto.User{
-				UserName: dto.UserName{Username: "newname"},
-				Email:    "new@example.com",
-				Avatar:   &newAvatar,
+	cases := []struct {
+		name          string
+		setup         func()
+		req           *dto.UpdateUserRequest
+		wantErrStatus int
+	}{
+		{
+			name: "Success",
+			req: &dto.UpdateUserRequest{
+				User: dto.User{
+					UserName: dto.UserName{Username: "newname"},
+					Email:    "new@example.com",
+					Avatar:   func() *string { v := "new_avatar.png"; return &v }(),
+				},
 			},
-		}
+		},
+		{
+			name: "Duplicate",
+			setup: func() {
+				_, _ = svc.CreateUser(ctx, &dto.CreateUserRequest{
+					User:     dto.User{UserName: dto.UserName{Username: "other"}, Email: "other@e.com"},
+					Password: dto.Password{Password: "password123"},
+				})
+			},
+			req: &dto.UpdateUserRequest{
+				User: dto.User{
+					UserName: dto.UserName{Username: "other"},
+					Email:    "new@example.com",
+				},
+			},
+			wantErrStatus: 409,
+		},
+	}
 
-		got, err := svc.UpdateUserProfile(ctx, u.ID, req)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if got.Username != "newname" {
-			t.Errorf("want username newname, got %s", got.Username)
-		}
-		if got.Email != "new@example.com" {
-			t.Errorf("want email new@example.com, got %s", got.Email)
-		}
-	})
-
-	t.Run("Duplicate", func(t *testing.T) {
-		// Create another user
-		_, _ = svc.CreateUser(ctx, &dto.CreateUserRequest{
-			User:     dto.User{UserName: dto.UserName{Username: "other"}, Email: "other@e.com"},
-			Password: dto.Password{Password: "p"},
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.setup != nil {
+				tc.setup()
+			}
+			got, err := svc.UpdateUserProfile(ctx, u.ID, tc.req)
+			if tc.wantErrStatus == 0 {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if got.Username != tc.req.Username {
+					t.Errorf("want username %s, got %s", tc.req.Username, got.Username)
+				}
+				if got.Email != tc.req.Email {
+					t.Errorf("want email %s, got %s", tc.req.Email, got.Email)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatal("expected error for duplicate")
+			}
+			requireAuthStatus(t, err, tc.wantErrStatus)
 		})
-
-		req := &dto.UpdateUserRequest{
-			User: dto.User{
-				UserName: dto.UserName{Username: "other"}, // Duplicate
-				Email:    "new@example.com",
-			},
-		}
-
-		_, err := svc.UpdateUserProfile(ctx, u.ID, req)
-		if err == nil {
-			t.Fatal("expected error for duplicate")
-		}
-		authErr, ok := err.(*middleware.AuthError)
-		if !ok || authErr.Status != 409 {
-			t.Errorf("expected 409 error, got %v", err)
-		}
-	})
+	}
 }
 
 func TestDeleteUser(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db, nil)
+	svc := NewUserService(newTestDependency(db, nil))
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -455,7 +506,7 @@ func TestDeleteUser(t *testing.T) {
 
 func TestValidateUserToken(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db, nil)
+	svc := NewUserService(newTestDependency(db, nil))
 	ctx := context.Background()
 
 	createReq := &dto.CreateUserRequest{
@@ -512,7 +563,7 @@ func TestValidateUserToken(t *testing.T) {
 
 func TestLogoutUser(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db, nil)
+	svc := NewUserService(newTestDependency(db, nil))
 	ctx := context.Background()
 
 	createReq := &dto.CreateUserRequest{
@@ -545,126 +596,90 @@ func TestLogoutUser(t *testing.T) {
 func TestDBErrors(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("CreateUser", func(t *testing.T) {
-		db := setupTestDB(t.Name())
-		svc := NewUserService(db, nil)
+	cases := []struct {
+		name string
+		run  func(svc *UserService) error
+	}{
+		{
+			name: "CreateUser",
+			run: func(svc *UserService) error {
+				req := &dto.CreateUserRequest{
+					User:     dto.User{UserName: dto.UserName{Username: "db1"}, Email: "db1@e.com"},
+					Password: dto.Password{Password: "password123"},
+				}
+				_, err := svc.CreateUser(ctx, req)
+				return err
+			},
+		},
+		{
+			name: "LoginUser",
+			run: func(svc *UserService) error {
+				req := &dto.LoginUserRequest{
+					Identifier: dto.Identifier{Identifier: "db1"},
+					Password:   dto.Password{Password: "password123"},
+				}
+				_, err := svc.LoginUser(ctx, req)
+				return err
+			},
+		},
+		{
+			name: "GetUserByID",
+			run: func(svc *UserService) error {
+				_, err := svc.GetUserByID(ctx, 1)
+				return err
+			},
+		},
+		{
+			name: "UpdateUserPassword",
+			run: func(svc *UserService) error {
+				req := &dto.UpdateUserPasswordRequest{
+					OldPassword: dto.OldPassword{OldPassword: "password123"},
+					NewPassword: dto.NewPassword{NewPassword: "password456"},
+				}
+				_, err := svc.UpdateUserPassword(ctx, 1, req)
+				return err
+			},
+		},
+		{
+			name: "UpdateUserProfile",
+			run: func(svc *UserService) error {
+				req := &dto.UpdateUserRequest{
+					User: dto.User{UserName: dto.UserName{Username: "n"}, Email: "n@e.com"},
+				}
+				_, err := svc.UpdateUserProfile(ctx, 1, req)
+				return err
+			},
+		},
+		{
+			name: "DeleteUser",
+			run: func(svc *UserService) error {
+				return svc.DeleteUser(ctx, 1)
+			},
+		},
+		{
+			name: "ValidateUserToken",
+			run: func(svc *UserService) error {
+				return svc.ValidateUserToken(ctx, "token", 1)
+			},
+		},
+		{
+			name: "LogoutUser",
+			run: func(svc *UserService) error {
+				return svc.LogoutUser(ctx, 1)
+			},
+		},
+	}
 
-		req := &dto.CreateUserRequest{
-			User:     dto.User{UserName: dto.UserName{Username: "db1"}, Email: "db1@e.com"},
-			Password: dto.Password{Password: "p"},
-		}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := setupTestDB(t.Name())
+			svc := NewUserService(newTestDependency(db, nil))
+			sqlDB, _ := db.DB()
+			_ = sqlDB.Close()
 
-		sqlDB, _ := db.DB()
-		_ = sqlDB.Close()
-
-		_, err := svc.CreateUser(ctx, req)
-		if err == nil {
-			t.Error("expected db error")
-		}
-	})
-
-	t.Run("LoginUser", func(t *testing.T) {
-		db := setupTestDB(t.Name())
-		svc := NewUserService(db, nil)
-
-		req := &dto.LoginUserRequest{
-			Identifier: dto.Identifier{Identifier: "db1"},
-			Password:   dto.Password{Password: "p"},
-		}
-
-		sqlDB, _ := db.DB()
-		_ = sqlDB.Close()
-
-		_, err := svc.LoginUser(ctx, req)
-		if err == nil {
-			t.Error("expected db error")
-		}
-	})
-
-	t.Run("GetUserByID", func(t *testing.T) {
-		db := setupTestDB(t.Name())
-		svc := NewUserService(db, nil)
-
-		sqlDB, _ := db.DB()
-		_ = sqlDB.Close()
-
-		_, err := svc.GetUserByID(ctx, 1)
-		if err == nil {
-			t.Error("expected db error")
-		}
-	})
-
-	t.Run("UpdateUserPassword", func(t *testing.T) {
-		db := setupTestDB(t.Name())
-		svc := NewUserService(db, nil)
-
-		req := &dto.UpdateUserPasswordRequest{
-			OldPassword: dto.OldPassword{OldPassword: "p"},
-			NewPassword: dto.NewPassword{NewPassword: "p2"},
-		}
-
-		sqlDB, _ := db.DB()
-		_ = sqlDB.Close()
-
-		_, err := svc.UpdateUserPassword(ctx, 1, req)
-		if err == nil {
-			t.Error("expected db error")
-		}
-	})
-
-	t.Run("UpdateUserProfile", func(t *testing.T) {
-		db := setupTestDB(t.Name())
-		svc := NewUserService(db, nil)
-
-		req := &dto.UpdateUserRequest{
-			User: dto.User{UserName: dto.UserName{Username: "n"}, Email: "n@e.com"},
-		}
-
-		sqlDB, _ := db.DB()
-		_ = sqlDB.Close()
-
-		_, err := svc.UpdateUserProfile(ctx, 1, req)
-		if err == nil {
-			t.Error("expected db error")
-		}
-	})
-
-	t.Run("DeleteUser", func(t *testing.T) {
-		db := setupTestDB(t.Name())
-		svc := NewUserService(db, nil)
-
-		sqlDB, _ := db.DB()
-		_ = sqlDB.Close()
-
-		err := svc.DeleteUser(ctx, 1)
-		if err == nil {
-			t.Error("expected db error")
-		}
-	})
-
-	t.Run("ValidateUserToken", func(t *testing.T) {
-		db := setupTestDB(t.Name())
-		svc := NewUserService(db, nil)
-
-		sqlDB, _ := db.DB()
-		_ = sqlDB.Close()
-
-		err := svc.ValidateUserToken(ctx, "token", 1)
-		if err == nil {
-			t.Error("expected db error")
-		}
-	})
-
-	t.Run("LogoutUser", func(t *testing.T) {
-		db := setupTestDB(t.Name())
-		svc := NewUserService(db, nil)
-
-		sqlDB, _ := db.DB()
-		_ = sqlDB.Close()
-
-		err := svc.LogoutUser(ctx, 1)
-		if err == nil {
-			t.Error("expected db error")
-		}
-	})
+			if err := tc.run(svc); err == nil {
+				t.Error("expected db error")
+			}
+		})
+	}
 }

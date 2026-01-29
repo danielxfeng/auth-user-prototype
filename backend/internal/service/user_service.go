@@ -9,8 +9,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
-	"github.com/paularynty/transcendence/auth-service-go/internal/config"
 	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
+	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
@@ -23,8 +23,7 @@ const MaxAvatarSize = 1 * 1024 * 1024 // 1 MB
 const BaseGoogleOAuthURL = "https://accounts.google.com/o/oauth2/v2/auth"
 
 type UserService struct {
-	DB    *gorm.DB
-	Redis *redis.Client
+	Dep *dependency.Dependency
 }
 
 func (s *UserService) CreateUser(ctx context.Context, request *dto.CreateUserRequest) (*dto.UserWithoutTokenResponse, error) {
@@ -45,7 +44,7 @@ func (s *UserService) CreateUser(ctx context.Context, request *dto.CreateUserReq
 		TwoFAToken:    nil,
 	}
 
-	err = gorm.G[model.User](s.DB).Create(ctx, &modelUser)
+	err = gorm.G[model.User](s.Dep.DB).Create(ctx, &modelUser)
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return nil, middleware.NewAuthError(409, "username or email already in use")
@@ -70,7 +69,7 @@ func (s *UserService) LoginUser(ctx context.Context, request *dto.LoginUserReque
 		identifierField = "username"
 	}
 
-	modelUser, err := gorm.G[model.User](s.DB).Where(identifierField+" = ?", request.Identifier.Identifier).First(ctx)
+	modelUser, err := gorm.G[model.User](s.Dep.DB).Where(identifierField+" = ?", request.Identifier.Identifier).First(ctx)
 	if err != nil || modelUser.PasswordHash == nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) || modelUser.PasswordHash == nil {
 			return nil, middleware.NewAuthError(401, "invalid credentials")
@@ -88,7 +87,7 @@ func (s *UserService) LoginUser(ctx context.Context, request *dto.LoginUserReque
 
 	isTwoFAEnabled := isTwoFAEnabled(modelUser.TwoFAToken)
 	if isTwoFAEnabled {
-		sessionToken, err := jwt.SignTwoFAToken(modelUser.ID)
+		sessionToken, err := jwt.SignTwoFAToken(s.Dep, modelUser.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -112,7 +111,7 @@ func (s *UserService) LoginUser(ctx context.Context, request *dto.LoginUserReque
 }
 
 func (s *UserService) GetUserByID(ctx context.Context, userID uint) (*dto.UserWithoutTokenResponse, error) {
-	modelUser, err := gorm.G[model.User](s.DB).Where("id = ?", userID).First(ctx)
+	modelUser, err := gorm.G[model.User](s.Dep.DB).Where("id = ?", userID).First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, middleware.NewAuthError(404, "user not found")
@@ -124,7 +123,7 @@ func (s *UserService) GetUserByID(ctx context.Context, userID uint) (*dto.UserWi
 }
 
 func (s *UserService) UpdateUserPassword(ctx context.Context, userID uint, request *dto.UpdateUserPasswordRequest) (*dto.UserWithTokenResponse, error) {
-	modelUser, err := gorm.G[model.User](s.DB).Where("id = ?", userID).First(ctx)
+	modelUser, err := gorm.G[model.User](s.Dep.DB).Where("id = ?", userID).First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, middleware.NewAuthError(404, "user not found")
@@ -149,7 +148,7 @@ func (s *UserService) UpdateUserPassword(ctx context.Context, userID uint, reque
 		return nil, err
 	}
 
-	_, err = gorm.G[model.User](s.DB).Where("id = ?", userID).Update(ctx, "password_hash", string(newPasswordBytes))
+	_, err = gorm.G[model.User](s.Dep.DB).Where("id = ?", userID).Update(ctx, "password_hash", string(newPasswordBytes))
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +162,7 @@ func (s *UserService) UpdateUserPassword(ctx context.Context, userID uint, reque
 }
 
 func (s *UserService) UpdateUserProfile(ctx context.Context, userID uint, request *dto.UpdateUserRequest) (*dto.UserWithoutTokenResponse, error) {
-	modelUser, err := gorm.G[model.User](s.DB).Where("id = ?", userID).First(ctx)
+	modelUser, err := gorm.G[model.User](s.Dep.DB).Where("id = ?", userID).First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, middleware.NewAuthError(404, "user not found")
@@ -175,7 +174,7 @@ func (s *UserService) UpdateUserProfile(ctx context.Context, userID uint, reques
 	modelUser.Avatar = request.Avatar
 	modelUser.Email = request.Email
 
-	err = s.DB.WithContext(ctx).Save(&modelUser).Error
+	err = s.Dep.DB.WithContext(ctx).Save(&modelUser).Error
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
@@ -188,14 +187,14 @@ func (s *UserService) UpdateUserProfile(ctx context.Context, userID uint, reques
 }
 
 func (s *UserService) DeleteUser(ctx context.Context, userID uint) error {
-	if config.Cfg.IsRedisEnabled {
-		err := logoutUserByRedis(ctx, s.Redis, userID)
+	if s.Dep.Cfg.IsRedisEnabled {
+		err := logoutUserByRedis(ctx, s.Dep.Redis, userID)
 		if err != nil {
 			return err
 		}
 	}
 
-	res := s.DB.WithContext(ctx).Unscoped().Delete(&model.User{}, userID)
+	res := s.Dep.DB.WithContext(ctx).Unscoped().Delete(&model.User{}, userID)
 	if res.Error != nil {
 		return res.Error
 	}
@@ -229,15 +228,15 @@ func logoutUserByRedis(ctx context.Context, redis *redis.Client, userID uint) er
 }
 
 func (s *UserService) LogoutUser(ctx context.Context, userID uint) error {
-	if config.Cfg.IsRedisEnabled {
-		return logoutUserByRedis(ctx, s.Redis, userID)
+	if s.Dep.Cfg.IsRedisEnabled {
+		return logoutUserByRedis(ctx, s.Dep.Redis, userID)
 	} else {
-		return logoutUserByDB(ctx, s.DB, userID)
+		return logoutUserByDB(ctx, s.Dep.DB, userID)
 	}
 }
 
 func (s *UserService) validateUserTokenDB(ctx context.Context, token string, userId uint) error {
-	modelToken, err := gorm.G[model.Token](s.DB).Where("token = ?", token).First(ctx)
+	modelToken, err := gorm.G[model.Token](s.Dep.DB).Where("token = ?", token).First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return middleware.NewAuthError(401, "invalid token")
@@ -254,7 +253,7 @@ func (s *UserService) validateUserTokenDB(ctx context.Context, token string, use
 }
 
 func (s *UserService) validateUserTokenRedis(ctx context.Context, token string, userId uint) error {
-	_, err := s.Redis.Get(ctx, buildTokenKey(userId, token)).Result()
+	_, err := s.Dep.Redis.Get(ctx, buildTokenKey(userId, token)).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return middleware.NewAuthError(401, "invalid token")
@@ -263,14 +262,14 @@ func (s *UserService) validateUserTokenRedis(ctx context.Context, token string, 
 	}
 
 	// A rough way to implement sliding expiration
-	s.Redis.Expire(ctx, buildTokenKey(userId, token), time.Duration(config.Cfg.UserTokenExpiry)*time.Second)
+	s.Dep.Redis.Expire(ctx, buildTokenKey(userId, token), time.Duration(s.Dep.Cfg.UserTokenExpiry)*time.Second)
 
 	s.updateHeartBeat(userId)
 	return nil
 }
 
 func (s *UserService) ValidateUserToken(ctx context.Context, token string, userId uint) error {
-	if config.Cfg.IsRedisEnabled {
+	if s.Dep.Cfg.IsRedisEnabled {
 		return s.validateUserTokenRedis(ctx, token, userId)
 	} else {
 		return s.validateUserTokenDB(ctx, token, userId)

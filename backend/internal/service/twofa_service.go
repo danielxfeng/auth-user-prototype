@@ -15,7 +15,7 @@ import (
 )
 
 func (s *UserService) StartTwoFaSetup(ctx context.Context, userID uint) (*dto.TwoFASetupResponse, error) {
-	modelUser, err := gorm.G[model.User](s.DB).Where("id = ?", userID).First(ctx)
+	modelUser, err := gorm.G[model.User](s.Dep.DB).Where("id = ?", userID).First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, middleware.NewAuthError(404, "user not found")
@@ -41,12 +41,12 @@ func (s *UserService) StartTwoFaSetup(ctx context.Context, userID uint) (*dto.Tw
 
 	twoFAToken := TwoFAPrePrefix + secret.Secret()
 
-	_, err = gorm.G[model.User](s.DB).Where("id = ?", userID).Update(ctx, "two_fa_token", twoFAToken)
+	_, err = gorm.G[model.User](s.Dep.DB).Where("id = ?", userID).Update(ctx, "two_fa_token", twoFAToken)
 	if err != nil {
 		return nil, err
 	}
 
-	setupToken, err := jwt.SignTwoFASetupToken(userID, secret.Secret())
+	setupToken, err := jwt.SignTwoFASetupToken(s.Dep, userID, secret.Secret())
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func (s *UserService) StartTwoFaSetup(ctx context.Context, userID uint) (*dto.Tw
 }
 
 func (s *UserService) ConfirmTwoFaSetup(ctx context.Context, userID uint, request *dto.TwoFAConfirmRequest) (*dto.UserWithTokenResponse, error) {
-	claims, err := jwt.ValidateTwoFASetupToken(request.SetupToken)
+	claims, err := jwt.ValidateTwoFASetupToken(s.Dep, request.SetupToken)
 	if err != nil || claims.Type != jwt.TwoFASetupType {
 		return nil, middleware.NewAuthError(400, "invalid setup token")
 	}
@@ -68,7 +68,7 @@ func (s *UserService) ConfirmTwoFaSetup(ctx context.Context, userID uint, reques
 		return nil, middleware.NewAuthError(400, "setup token does not match user")
 	}
 
-	modelUser, err := gorm.G[model.User](s.DB).Where("id = ?", userID).First(ctx)
+	modelUser, err := gorm.G[model.User](s.Dep.DB).Where("id = ?", userID).First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, middleware.NewAuthError(404, "user not found")
@@ -94,7 +94,7 @@ func (s *UserService) ConfirmTwoFaSetup(ctx context.Context, userID uint, reques
 		return nil, middleware.NewAuthError(400, "invalid 2FA code")
 	}
 
-	_, err = gorm.G[model.User](s.DB).Where("id = ?", userID).Update(ctx, "two_fa_token", twoFaSecret)
+	_, err = gorm.G[model.User](s.Dep.DB).Where("id = ?", userID).Update(ctx, "two_fa_token", twoFaSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (s *UserService) ConfirmTwoFaSetup(ctx context.Context, userID uint, reques
 }
 
 func (s *UserService) DisableTwoFA(ctx context.Context, userID uint, request *dto.DisableTwoFARequest) (*dto.UserWithTokenResponse, error) {
-	modelUser, err := gorm.G[model.User](s.DB).Where("id = ?", userID).First(ctx)
+	modelUser, err := gorm.G[model.User](s.Dep.DB).Where("id = ?", userID).First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, middleware.NewAuthError(404, "user not found")
@@ -133,7 +133,7 @@ func (s *UserService) DisableTwoFA(ctx context.Context, userID uint, request *dt
 		return nil, err
 	}
 
-	_, err = gorm.G[model.User](s.DB).Where("id = ?", userID).Update(ctx, "two_fa_token", nil)
+	_, err = gorm.G[model.User](s.Dep.DB).Where("id = ?", userID).Update(ctx, "two_fa_token", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -148,12 +148,12 @@ func (s *UserService) DisableTwoFA(ctx context.Context, userID uint, request *dt
 }
 
 func (s *UserService) SubmitTwoFAChallenge(ctx context.Context, request *dto.TwoFAChallengeRequest) (*dto.UserWithTokenResponse, error) {
-	claims, err := jwt.ValidateTwoFAToken(request.SessionToken)
+	claims, err := jwt.ValidateTwoFAToken(s.Dep, request.SessionToken)
 	if err != nil || claims.Type != jwt.TwoFATokenType {
 		return nil, middleware.NewAuthError(400, "invalid session token")
 	}
 
-	modelUser, err := gorm.G[model.User](s.DB).Where("id = ?", claims.UserID).First(ctx)
+	modelUser, err := gorm.G[model.User](s.Dep.DB).Where("id = ?", claims.UserID).First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, middleware.NewAuthError(404, "user not found")
