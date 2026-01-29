@@ -29,7 +29,7 @@ func NewUserService(dep *dependency.Dependency) *UserService {
 	}
 
 	return &UserService{
-		Dep:  dep,
+		Dep: dep,
 	}
 }
 

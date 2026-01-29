@@ -1,10 +1,10 @@
 package dependency
 
-import ( 
-	"gorm.io/gorm"
-	"log/slog"
+import (
 	"github.com/paularynty/transcendence/auth-service-go/internal/config"
 	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
+	"log/slog"
 )
 
 type Dependency struct {

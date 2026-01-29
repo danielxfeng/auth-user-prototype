@@ -116,8 +116,8 @@ func TestUsernameValidatorRules(t *testing.T) {
 		{"ValidTrimmedRight", "valid-user   ", false},
 		{"ValidTrimmedLeft", "   valid-user", false},
 		{"EmptyAfterTrim", "   ", true},
-		{"TooShort", "abcde", true},
-		{"TooShortAfterTrim", "  abcde  ", true},
+		{"TooShort", "ab", true},
+		{"TooShortAfterTrim", "  ab  ", true},
 		{"ContainsSpace", "user name", true},
 		{"IllegalChars", "user@name", true},
 	}
@@ -196,7 +196,7 @@ func TestIdentifierValidatorAcceptsUsernameOrEmail(t *testing.T) {
 		{"TrimmedEmailLeft", "   user@example.com", false},
 		{"EmptyAfterTrim", "   ", true},
 		{"Invalid", "???", true},
-		{"TooShort", "abcde", true},
+		{"TooShort", "ab", true},
 	}
 
 	for _, tc := range cases {

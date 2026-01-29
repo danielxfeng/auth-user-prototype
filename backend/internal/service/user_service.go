@@ -23,7 +23,7 @@ const MaxAvatarSize = 1 * 1024 * 1024 // 1 MB
 const BaseGoogleOAuthURL = "https://accounts.google.com/o/oauth2/v2/auth"
 
 type UserService struct {
-	Dep  *dependency.Dependency
+	Dep *dependency.Dependency
 }
 
 func (s *UserService) CreateUser(ctx context.Context, request *dto.CreateUserRequest) (*dto.UserWithoutTokenResponse, error) {

@@ -7,16 +7,18 @@ import (
 	"testing"
 
 	"cloud.google.com/go/auth/credentials/idtoken"
-	"github.com/paularynty/transcendence/auth-service-go/internal/config"
 	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
+	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
+	"github.com/paularynty/transcendence/auth-service-go/internal/testutil"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
 )
 
 func TestGetGoogleOAuthURL(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db, nil)
+	cfg := testutil.NewTestConfig()
+	svc := NewUserService(newTestDependencyWithConfig(cfg, db, nil))
 	ctx := context.Background()
 
 	t.Run("Success", func(t *testing.T) {
@@ -31,11 +33,11 @@ func TestGetGoogleOAuthURL(t *testing.T) {
 		}
 
 		q := u.Query()
-		if q.Get("client_id") != config.Cfg.GoogleClientId {
-			t.Errorf("expected client_id %s, got %s", config.Cfg.GoogleClientId, q.Get("client_id"))
+		if q.Get("client_id") != cfg.GoogleClientId {
+			t.Errorf("expected client_id %s, got %s", cfg.GoogleClientId, q.Get("client_id"))
 		}
-		if q.Get("redirect_uri") != config.Cfg.GoogleRedirectUri {
-			t.Errorf("expected redirect_uri %s, got %s", config.Cfg.GoogleRedirectUri, q.Get("redirect_uri"))
+		if q.Get("redirect_uri") != cfg.GoogleRedirectUri {
+			t.Errorf("expected redirect_uri %s, got %s", cfg.GoogleRedirectUri, q.Get("redirect_uri"))
 		}
 		if q.Get("state") == "" {
 			t.Error("expected state param")
@@ -45,7 +47,7 @@ func TestGetGoogleOAuthURL(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_InvalidState(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db, nil)
+	svc := NewUserService(newTestDependency(db, nil))
 	ctx := context.Background()
 
 	// Helper to parse redirect URL
@@ -68,7 +70,7 @@ func TestHandleGoogleOAuthCallback_InvalidState(t *testing.T) {
 	})
 
 	t.Run("ExpiredState", func(t *testing.T) {
-		userToken, _ := jwt.SignUserToken(1)
+		userToken, _ := jwt.SignUserToken(svc.Dep, 1)
 		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "somecode", userToken)
 
 		_, errMsg := parseRedirect(redirectURL)
@@ -80,7 +82,7 @@ func TestHandleGoogleOAuthCallback_InvalidState(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_Success(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db, nil)
+	svc := NewUserService(newTestDependency(db, nil))
 	ctx := context.Background()
 
 	// Mock dependencies
@@ -91,7 +93,7 @@ func TestHandleGoogleOAuthCallback_Success(t *testing.T) {
 		FetchGoogleUserInfo = origFetch
 	}()
 
-	ExchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
+	ExchangeCodeForTokens = func(_ *dependency.Dependency, ctx context.Context, code string) (*idtoken.Payload, error) {
 		return &idtoken.Payload{Subject: "g123"}, nil
 	}
 
@@ -103,7 +105,7 @@ func TestHandleGoogleOAuthCallback_Success(t *testing.T) {
 		}, nil
 	}
 
-	state, _ := jwt.SignOauthStateToken()
+	state, _ := jwt.SignOauthStateToken(svc.Dep)
 
 	t.Run("NewUser", func(t *testing.T) {
 		redirectURL := svc.HandleGoogleOAuthCallback(ctx, "validcode", state)
@@ -205,7 +207,7 @@ func TestHandleGoogleOAuthCallback_Success(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_Errors(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db, nil)
+	svc := NewUserService(newTestDependency(db, nil))
 	ctx := context.Background()
 
 	origExchange := ExchangeCodeForTokens
@@ -215,10 +217,10 @@ func TestHandleGoogleOAuthCallback_Errors(t *testing.T) {
 		FetchGoogleUserInfo = origFetch
 	}()
 
-	state, _ := jwt.SignOauthStateToken()
+	state, _ := jwt.SignOauthStateToken(svc.Dep)
 
 	t.Run("ExchangeError", func(t *testing.T) {
-		ExchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
+		ExchangeCodeForTokens = func(_ *dependency.Dependency, ctx context.Context, code string) (*idtoken.Payload, error) {
 			return nil, errors.New("exchange failed")
 		}
 
@@ -230,7 +232,7 @@ func TestHandleGoogleOAuthCallback_Errors(t *testing.T) {
 	})
 
 	t.Run("FetchError", func(t *testing.T) {
-		ExchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
+		ExchangeCodeForTokens = func(_ *dependency.Dependency, ctx context.Context, code string) (*idtoken.Payload, error) {
 			return &idtoken.Payload{}, nil
 		}
 		FetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
@@ -247,7 +249,7 @@ func TestHandleGoogleOAuthCallback_Errors(t *testing.T) {
 
 func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db, nil)
+	svc := NewUserService(newTestDependency(db, nil))
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -317,7 +319,7 @@ func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 
 func TestCreateNewUserFromGoogleInfo(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db, nil)
+	svc := NewUserService(newTestDependency(db, nil))
 	ctx := context.Background()
 
 	t.Run("Success", func(t *testing.T) {
@@ -367,7 +369,7 @@ func TestCreateNewUserFromGoogleInfo(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_DBError(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db, nil)
+	svc := NewUserService(newTestDependency(db, nil))
 	ctx := context.Background()
 
 	origExchange := ExchangeCodeForTokens
@@ -377,9 +379,9 @@ func TestHandleGoogleOAuthCallback_DBError(t *testing.T) {
 		FetchGoogleUserInfo = origFetch
 	}()
 
-	state, _ := jwt.SignOauthStateToken()
+	state, _ := jwt.SignOauthStateToken(svc.Dep)
 
-	ExchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
+	ExchangeCodeForTokens = func(_ *dependency.Dependency, ctx context.Context, code string) (*idtoken.Payload, error) {
 		return &idtoken.Payload{Subject: "g123"}, nil
 	}
 
@@ -403,7 +405,7 @@ func TestHandleGoogleOAuthCallback_DBError(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_LinkError(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(db, nil)
+	svc := NewUserService(newTestDependency(db, nil))
 	ctx := context.Background()
 
 	origExchange := ExchangeCodeForTokens
@@ -413,9 +415,9 @@ func TestHandleGoogleOAuthCallback_LinkError(t *testing.T) {
 		FetchGoogleUserInfo = origFetch
 	}()
 
-	state, _ := jwt.SignOauthStateToken()
+	state, _ := jwt.SignOauthStateToken(svc.Dep)
 
-	ExchangeCodeForTokens = func(ctx context.Context, code string) (*idtoken.Payload, error) {
+	ExchangeCodeForTokens = func(_ *dependency.Dependency, ctx context.Context, code string) (*idtoken.Payload, error) {
 		return &idtoken.Payload{Subject: "new_g_id"}, nil
 	}
 
@@ -429,7 +431,7 @@ func TestHandleGoogleOAuthCallback_LinkError(t *testing.T) {
 
 	// Create user with SAME email but DIFFERENT google ID (already linked)
 	googleID := "old_g_id"
-	svc.DB.Create(&model.User{
+	svc.Dep.DB.Create(&model.User{
 		Username:      "existing",
 		Email:         "test@google.com",
 		GoogleOauthID: &googleID,

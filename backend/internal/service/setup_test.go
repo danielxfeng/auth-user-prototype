@@ -1,7 +1,6 @@
 package service
 
 import (
-	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -13,7 +12,8 @@ import (
 
 	"github.com/paularynty/transcendence/auth-service-go/internal/config"
 	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
-	"github.com/paularynty/transcendence/auth-service-go/internal/util"
+	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
+	"github.com/paularynty/transcendence/auth-service-go/internal/testutil"
 )
 
 func setupTestDB(testName string) *gorm.DB {
@@ -44,35 +44,41 @@ func setupTestDB(testName string) *gorm.DB {
 	return db
 }
 
-func setupConfig() {
-	config.Cfg = &config.Config{
-		JwtSecret:               "test-secret",
-		UserTokenExpiry:         3600,
-		UserTokenAbsoluteExpiry: 2592000,
-		OauthStateTokenExpiry:   600,
-		GoogleClientId:          "test-client-id",
-		GoogleClientSecret:      "test-client-secret",
-		GoogleRedirectUri:       "http://localhost:8080/callback",
-		FrontendUrl:             "http://localhost:3000",
-		TwoFaUrlPrefix:          "otpauth://totp/Transcendence?secret=",
-		TwoFaTokenExpiry:        600,
-		RedisURL:                "",
-		IsRedisEnabled:          false,
-	}
-
-	// Mock logger to discard output during tests
-	util.Logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelError, // Only show errors
-	}))
-}
-
 func TestMain(m *testing.M) {
-	setupConfig()
 	code := m.Run()
 	os.Exit(code)
 }
 
-func setupTestRedis(t *testing.T) (*miniredis.Miniredis, *redis.Client, func()) {
+func newTestDependency(db *gorm.DB, redis *redis.Client, cfgMutators ...func(*config.Config)) *dependency.Dependency {
+	cfg := testutil.NewTestConfig()
+	for _, mutate := range cfgMutators {
+		mutate(cfg)
+	}
+	logger := testutil.NewTestLogger()
+	if redis != nil {
+		cfg.IsRedisEnabled = true
+		if cfg.RedisURL == "" {
+			cfg.RedisURL = "redis://test"
+		}
+	}
+	return dependency.NewDependency(cfg, db, redis, logger)
+}
+
+func newTestDependencyWithConfig(cfg *config.Config, db *gorm.DB, redis *redis.Client) *dependency.Dependency {
+	if cfg == nil {
+		cfg = testutil.NewTestConfig()
+	}
+	logger := testutil.NewTestLogger()
+	if redis != nil {
+		cfg.IsRedisEnabled = true
+		if cfg.RedisURL == "" {
+			cfg.RedisURL = "redis://test"
+		}
+	}
+	return dependency.NewDependency(cfg, db, redis, logger)
+}
+
+func setupTestRedis(t *testing.T, cfg *config.Config) (*miniredis.Miniredis, *redis.Client, func()) {
 	t.Helper()
 
 	mr := miniredis.RunT(t)
@@ -80,16 +86,14 @@ func setupTestRedis(t *testing.T) (*miniredis.Miniredis, *redis.Client, func()) 
 		Addr: mr.Addr(),
 	})
 
-	prevCfg := config.Cfg
-	cfgCopy := *prevCfg
-	cfgCopy.RedisURL = "redis://" + mr.Addr()
-	cfgCopy.IsRedisEnabled = true
-	config.Cfg = &cfgCopy
+	if cfg != nil {
+		cfg.RedisURL = "redis://" + mr.Addr()
+		cfg.IsRedisEnabled = true
+	}
 
 	cleanup := func() {
 		_ = client.Close()
 		mr.Close()
-		config.Cfg = prevCfg
 	}
 
 	return mr, client, cleanup

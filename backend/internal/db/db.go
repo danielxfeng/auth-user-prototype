@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func GetDB(dbName string, logger *slog.Logger)  *gorm.DB {
+func GetDB(dbName string, logger *slog.Logger) *gorm.DB {
 	var err error
 	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{TranslateError: true})
 

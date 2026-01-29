@@ -24,8 +24,8 @@ import (
 
 	"github.com/gin-contrib/cors"
 
-	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
+	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 )
 
 func SetupRouter(dep *dependency.Dependency) *gin.Engine {
