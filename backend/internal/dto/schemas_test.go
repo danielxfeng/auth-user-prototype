@@ -82,21 +82,26 @@ func TestUsersResponseMarshalsAsObjectWithSlice(t *testing.T) {
 
 func TestTrimValidationStripsWhitespace(t *testing.T) {
 	type payload struct {
-		Value string `validate:"required,trim,min=3"`
+		Value string `validate:"required,trim,min=6"`
 	}
 
-	data := &payload{Value: "  foo  "}
+	data := &payload{Value: "  foobar  "}
 	if err := dto.Validate.Struct(data); err != nil {
 		t.Fatalf("expected trimmed value to pass validation, got error: %v", err)
 	}
 
-	if data.Value != "foo" {
+	if data.Value != "foobar" {
 		t.Fatalf("expected trim validator to remove outer spaces, got %q", data.Value)
 	}
 
-	tooShort := &payload{Value: "  a "}
+	tooShort := &payload{Value: "  abcde "}
 	if err := dto.Validate.Struct(tooShort); err == nil {
 		t.Fatalf("expected trimmed value shorter than min to fail validation")
+	}
+
+	emptyAfterTrim := &payload{Value: "     "}
+	if err := dto.Validate.Struct(emptyAfterTrim); err == nil {
+		t.Fatalf("expected whitespace-only value to fail validation after trim")
 	}
 }
 
@@ -108,8 +113,11 @@ func TestUsernameValidatorRules(t *testing.T) {
 	}{
 		{"Valid", "valid_user", false},
 		{"ValidTrimmed", "  valid-user  ", false},
-		{"TooShort", "ab", true},
-		{"TooShortAfterTrim", "  ab  ", true},
+		{"ValidTrimmedRight", "valid-user   ", false},
+		{"ValidTrimmedLeft", "   valid-user", false},
+		{"EmptyAfterTrim", "   ", true},
+		{"TooShort", "abcde", true},
+		{"TooShortAfterTrim", "  abcde  ", true},
 		{"ContainsSpace", "user name", true},
 		{"IllegalChars", "user@name", true},
 	}
@@ -144,6 +152,9 @@ func TestPasswordValidatorRules(t *testing.T) {
 	}{
 		{"ValidBasic", "Abc123", false},
 		{"ValidSymbols", "pass,#$%", false},
+		{"ValidTrimmedRight", "Abc123   ", false},
+		{"ValidTrimmedLeft", "   Abc123", false},
+		{"EmptyAfterTrim", "   ", true},
 		{"TooShort", "ab", true},
 		{"TooShortAfterTrim", "  ab  ", true},
 		{"ContainsSpace", "pass word", true},
@@ -181,8 +192,11 @@ func TestIdentifierValidatorAcceptsUsernameOrEmail(t *testing.T) {
 		{"Username", "valid_user", false},
 		{"Email", "user@example.com", false},
 		{"TrimmedEmail", "  user@example.com  ", false},
+		{"TrimmedEmailRight", "user@example.com   ", false},
+		{"TrimmedEmailLeft", "   user@example.com", false},
+		{"EmptyAfterTrim", "   ", true},
 		{"Invalid", "???", true},
-		{"TooShort", "ab", true},
+		{"TooShort", "abcde", true},
 	}
 
 	for _, tc := range cases {
