@@ -7,21 +7,24 @@ import (
 )
 
 type Config struct {
-	GinMode                 string
-	DbAddress               string
-	JwtSecret               string
-	UserTokenExpiry         int
-	OauthStateTokenExpiry   int
-	GoogleClientId          string
-	GoogleClientSecret      string
-	GoogleRedirectUri       string
-	FrontendUrl             string
-	TwoFaUrlPrefix          string
-	TwoFaTokenExpiry        int
-	RedisURL                string
-	IsRedisEnabled          bool
-	UserTokenAbsoluteExpiry int
-	Port                    int
+	GinMode                         string
+	DbAddress                       string
+	JwtSecret                       string
+	UserTokenExpiry                 int
+	OauthStateTokenExpiry           int
+	GoogleClientId                  string
+	GoogleClientSecret              string
+	GoogleRedirectUri               string
+	FrontendUrl                     string
+	TwoFaUrlPrefix                  string
+	TwoFaTokenExpiry                int
+	RedisURL                        string
+	IsRedisEnabled                  bool
+	UserTokenAbsoluteExpiry         int
+	Port                            int
+	RateLimiterDurationInSec        int
+	RateLimiterRequestLimit         int
+	RateLimiterCleanupIntervalInSec int
 }
 
 func getEnvStrOrDefault(key string, defaultValue string) string {
@@ -72,20 +75,23 @@ func LoadConfigFromEnv() (*Config, error) {
 	}
 
 	return &Config{
-		GinMode:                 getEnvStrOrDefault("GIN_MODE", "debug"),
-		DbAddress:               getEnvStrOrDefault("DB_ADDRESS", "data/auth_service_db.sqlite"),
-		JwtSecret:               jwtSecret,
-		UserTokenExpiry:         getEnvIntOrDefault("USER_TOKEN_EXPIRY", 3600),
-		OauthStateTokenExpiry:   getEnvIntOrDefault("OAUTH_STATE_TOKEN_EXPIRY", 600),
-		GoogleClientId:          GoogleClientId,
-		GoogleClientSecret:      GoogleClientSecret,
-		GoogleRedirectUri:       getEnvStrOrDefault("GOOGLE_REDIRECT_URI", "test-google-redirect-uri"),
-		FrontendUrl:             getEnvStrOrDefault("FRONTEND_URL", "http://localhost:5173"),
-		TwoFaUrlPrefix:          getEnvStrOrDefault("TWO_FA_URL_PREFIX", "otpauth://totp/Transcendence?secret="),
-		TwoFaTokenExpiry:        getEnvIntOrDefault("TWO_FA_TOKEN_EXPIRY", 600),
-		RedisURL:                getEnvStrOrDefault("REDIS_URL", ""),
-		IsRedisEnabled:          getEnvStrOrDefault("REDIS_URL", "") != "",
-		UserTokenAbsoluteExpiry: getEnvIntOrDefault("USER_TOKEN_ABSOLUTE_EXPIRY", 2592000),
-		Port:                    getEnvIntOrDefault("PORT", 3003),
+		GinMode:                         getEnvStrOrDefault("GIN_MODE", "debug"),
+		DbAddress:                       getEnvStrOrDefault("DB_ADDRESS", "data/auth_service_db.sqlite"),
+		JwtSecret:                       jwtSecret,
+		UserTokenExpiry:                 getEnvIntOrDefault("USER_TOKEN_EXPIRY", 3600),
+		OauthStateTokenExpiry:           getEnvIntOrDefault("OAUTH_STATE_TOKEN_EXPIRY", 600),
+		GoogleClientId:                  GoogleClientId,
+		GoogleClientSecret:              GoogleClientSecret,
+		GoogleRedirectUri:               getEnvStrOrDefault("GOOGLE_REDIRECT_URI", "test-google-redirect-uri"),
+		FrontendUrl:                     getEnvStrOrDefault("FRONTEND_URL", "http://localhost:5173"),
+		TwoFaUrlPrefix:                  getEnvStrOrDefault("TWO_FA_URL_PREFIX", "otpauth://totp/Transcendence?secret="),
+		TwoFaTokenExpiry:                getEnvIntOrDefault("TWO_FA_TOKEN_EXPIRY", 600),
+		RedisURL:                        getEnvStrOrDefault("REDIS_URL", ""),
+		IsRedisEnabled:                  getEnvStrOrDefault("REDIS_URL", "") != "",
+		UserTokenAbsoluteExpiry:         getEnvIntOrDefault("USER_TOKEN_ABSOLUTE_EXPIRY", 2592000),
+		Port:                            getEnvIntOrDefault("PORT", 3003),
+		RateLimiterDurationInSec:        getEnvIntOrDefault("RATE_LIMITER_DURATION_IN_SECONDS", 60),
+		RateLimiterRequestLimit:         getEnvIntOrDefault("RATE_LIMITER_REQUEST_LIMIT", 1000),
+		RateLimiterCleanupIntervalInSec: getEnvIntOrDefault("RATE_LIMITER_CLEANUP_INTERVAL_IN_SECONDS", 300),
 	}, nil
 }

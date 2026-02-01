@@ -59,7 +59,7 @@ func SetupRouter(dep *dependency.Dependency) *gin.Engine {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	rateLimiter := middleware.NewRateLimiter(60*time.Second, 1000)
+	rateLimiter := middleware.NewRateLimiter(time.Duration(dep.Cfg.RateLimiterDurationInSec)*time.Second, dep.Cfg.RateLimiterRequestLimit, time.Duration(dep.Cfg.RateLimiterCleanupIntervalInSec)*time.Second)
 	r.Use(rateLimiter.RateLimit())
 
 	r.Use(middleware.PanicHandler())

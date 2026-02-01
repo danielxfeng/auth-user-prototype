@@ -11,19 +11,23 @@ import (
 )
 
 type RateLimiter struct {
-	mu            sync.Mutex
-	limit         int
-	duration      time.Duration
-	requestCounts map[string]int
-	requestExpiry map[string]time.Time
+	mu              sync.Mutex
+	limit           int
+	duration        time.Duration
+	requestCounts   map[string]int
+	requestExpiry   map[string]time.Time
+	lastCleanup     time.Time
+	cleanupInterval time.Duration
 }
 
-func NewRateLimiter(duration time.Duration, limit int) *RateLimiter {
+func NewRateLimiter(duration time.Duration, limit int, cleanupInterval time.Duration) *RateLimiter {
 	return &RateLimiter{
-		limit:         limit,
-		duration:      duration,
-		requestCounts: make(map[string]int),
-		requestExpiry: make(map[string]time.Time),
+		limit:           limit,
+		duration:        duration,
+		requestCounts:   make(map[string]int),
+		requestExpiry:   make(map[string]time.Time),
+		lastCleanup:     time.Now(),
+		cleanupInterval: cleanupInterval,
 	}
 }
 
@@ -32,6 +36,12 @@ func (rl *RateLimiter) AllowRequest(clientID string) bool {
 
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
+
+	if ts.Sub(rl.lastCleanup) > rl.cleanupInterval {
+		unSafeClearExpiredEntries(ts, rl)
+		rl.lastCleanup = ts
+	}
+
 	expiry, exists := rl.requestExpiry[clientID]
 	if !exists || ts.After(expiry) {
 		rl.requestCounts[clientID] = 1
@@ -62,5 +72,15 @@ func (rl *RateLimiter) RateLimit() gin.HandlerFunc {
 		}
 
 		c.Next()
+	}
+}
+
+// unSafeClearExpiredEntries Not thread-safe; caller must hold rl.mu lock.
+func unSafeClearExpiredEntries(ts time.Time, rl *RateLimiter) {
+	for clientID, expiry := range rl.requestExpiry {
+		if ts.After(expiry) {
+			delete(rl.requestCounts, clientID)
+			delete(rl.requestExpiry, clientID)
+		}
 	}
 }
