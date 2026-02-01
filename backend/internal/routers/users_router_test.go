@@ -29,6 +29,15 @@ import (
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
 )
 
+func mustNewUserService(t *testing.T, dep *dependency.Dependency) *service.UserService {
+	t.Helper()
+	svc, err := service.NewUserService(dep)
+	if err != nil {
+		t.Fatalf("failed to create user service: %v", err)
+	}
+	return svc
+}
+
 type usersRouterEnv struct {
 	router  *gin.Engine
 	dep     *dependency.Dependency
@@ -78,7 +87,8 @@ func setupUsersRouterTest(t *testing.T, useRedis bool) *usersRouterEnv {
 
 	dep := dependency.NewDependency(cfg, dbConn, redisClient, logger)
 	router := gin.New()
-	UsersRouter(router.Group("/users"), dep)
+	userService := mustNewUserService(t, dep)
+	UsersRouter(router.Group("/users"), userService)
 
 	if sqlDB, err := dbConn.DB(); err == nil && sqlDB != nil {
 		sqlDB.SetMaxOpenConns(1)
@@ -124,7 +134,7 @@ func addUserToken(t *testing.T, dep *dependency.Dependency, userID uint) string 
 
 func createUser(t *testing.T, dep *dependency.Dependency, username, email, password string) *dto.UserWithoutTokenResponse {
 	t.Helper()
-	svc := service.NewUserService(dep)
+	svc := mustNewUserService(t, dep)
 	user, err := svc.CreateUser(context.Background(), &dto.CreateUserRequest{
 		User:     dto.User{UserName: dto.UserName{Username: username}, Email: email},
 		Password: dto.Password{Password: password},
@@ -357,7 +367,7 @@ func TestUsersRouter_UpdateUser_Failures(t *testing.T) {
 	env := setupUsersRouterTest(t, false)
 	defer env.cleanup()
 
-	svc := service.NewUserService(env.dep)
+	svc := mustNewUserService(t, env.dep)
 	u, _ := svc.CreateUser(context.Background(), &dto.CreateUserRequest{
 		User:     dto.User{UserName: dto.UserName{Username: "u1"}, Email: "u1@e.com"},
 		Password: dto.Password{Password: "pass123"},
@@ -399,7 +409,7 @@ func TestUsersRouter_UpdateUserPassword(t *testing.T) {
 	env := setupUsersRouterTest(t, false)
 	defer env.cleanup()
 
-	svc := service.NewUserService(env.dep)
+	svc := mustNewUserService(t, env.dep)
 	userResp, _ := svc.CreateUser(context.Background(), &dto.CreateUserRequest{
 		User:     dto.User{UserName: dto.UserName{Username: "pw"}, Email: "pw@e.com"},
 		Password: dto.Password{Password: "oldpass"},
@@ -493,7 +503,7 @@ func TestUsersRouter_Friends(t *testing.T) {
 	env := setupUsersRouterTest(t, false)
 	defer env.cleanup()
 
-	svc := service.NewUserService(env.dep)
+	svc := mustNewUserService(t, env.dep)
 	u1 := createUser(t, env.dep, "f1", "f1@e.com", "pass123")
 	u2 := createUser(t, env.dep, "f2", "f2@e.com", "pass123")
 	_ = svc
@@ -531,7 +541,7 @@ func TestUsersRouter_Friends_Failures(t *testing.T) {
 	env := setupUsersRouterTest(t, false)
 	defer env.cleanup()
 
-	svc := service.NewUserService(env.dep)
+	svc := mustNewUserService(t, env.dep)
 	u1 := createUser(t, env.dep, "f1", "f1@e.com", "pass123")
 	u2 := createUser(t, env.dep, "f2", "f2@e.com", "pass123")
 	token := addUserToken(t, env.dep, u1.ID)
@@ -636,7 +646,7 @@ func TestUsersRouter_2FA_Failures(t *testing.T) {
 	env := setupUsersRouterTest(t, false)
 	defer env.cleanup()
 
-	svc := service.NewUserService(env.dep)
+	svc := mustNewUserService(t, env.dep)
 	u := createUser(t, env.dep, "2fafail", "2fafail@e.com", "pass123")
 	token := addUserToken(t, env.dep, u.ID)
 

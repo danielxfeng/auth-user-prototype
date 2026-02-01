@@ -6,8 +6,18 @@ import (
 	"time"
 
 	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
+	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 )
+
+func mustNewUserService(t *testing.T, dep *dependency.Dependency) *UserService {
+	t.Helper()
+	svc, err := NewUserService(dep)
+	if err != nil {
+		t.Fatalf("failed to create user service: %v", err)
+	}
+	return svc
+}
 
 func TestHelperFunctions(t *testing.T) {
 	t.Run("isTwoFAEnabled", func(t *testing.T) {
@@ -61,7 +71,7 @@ func TestHelperFunctions(t *testing.T) {
 
 	t.Run("UpdateHeartBeat", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(newTestDependency(db, nil))
+		svc := mustNewUserService(t, newTestDependency(db, nil))
 
 		// Create user first to satisfy FK
 		_, _ = svc.CreateUser(context.Background(), &dto.CreateUserRequest{
@@ -83,7 +93,7 @@ func TestHelperFunctions(t *testing.T) {
 
 	t.Run("IssueNewTokenForUser", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(newTestDependency(db, nil))
+		svc := mustNewUserService(t, newTestDependency(db, nil))
 
 		// Create user first
 		_, _ = svc.CreateUser(context.Background(), &dto.CreateUserRequest{
@@ -113,7 +123,7 @@ func TestHelperFunctions(t *testing.T) {
 
 	t.Run("IssueNewTokenForUser_DBError", func(t *testing.T) {
 		db := setupTestDB(t.Name())
-		svc := NewUserService(newTestDependency(db, nil))
+		svc := mustNewUserService(t, newTestDependency(db, nil))
 		sqlDB, _ := db.DB()
 		_ = sqlDB.Close()
 

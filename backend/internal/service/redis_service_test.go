@@ -27,7 +27,7 @@ func TestRedisTokenLifecycle(t *testing.T) {
 	mr, redisClient, cleanupRedis := setupTestRedis(t, cfg)
 	defer cleanupRedis()
 
-	svc := NewUserService(newTestDependencyWithConfig(cfg, db, redisClient))
+	svc := mustNewUserService(t, newTestDependencyWithConfig(cfg, db, redisClient))
 	ctx := context.Background()
 
 	userResp, err := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -92,7 +92,7 @@ func TestRedisHeartbeatOnlineStatusAndCleanup(t *testing.T) {
 	_, redisClient, cleanupRedis := setupTestRedis(t, cfg)
 	defer cleanupRedis()
 
-	svc := NewUserService(newTestDependencyWithConfig(cfg, db, redisClient))
+	svc := mustNewUserService(t, newTestDependencyWithConfig(cfg, db, redisClient))
 	ctx := context.Background()
 
 	u1, err := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -153,7 +153,7 @@ func TestRedisLoginUpdatesHeartbeat(t *testing.T) {
 	_, redisClient, cleanupRedis := setupTestRedis(t, cfg)
 	defer cleanupRedis()
 
-	svc := NewUserService(newTestDependencyWithConfig(cfg, db, redisClient))
+	svc := mustNewUserService(t, newTestDependencyWithConfig(cfg, db, redisClient))
 	ctx := context.Background()
 
 	created, err := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -194,7 +194,7 @@ func TestRedisLogoutRevokesAllTokens(t *testing.T) {
 	mr, redisClient, cleanupRedis := setupTestRedis(t, cfg)
 	defer cleanupRedis()
 
-	svc := NewUserService(newTestDependencyWithConfig(cfg, db, redisClient))
+	svc := mustNewUserService(t, newTestDependencyWithConfig(cfg, db, redisClient))
 	ctx := context.Background()
 
 	userResp, err := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -242,7 +242,7 @@ func TestRedisDeleteUserRevokesAllTokens(t *testing.T) {
 	mr, redisClient, cleanupRedis := setupTestRedis(t, cfg)
 	defer cleanupRedis()
 
-	svc := NewUserService(newTestDependencyWithConfig(cfg, db, redisClient))
+	svc := mustNewUserService(t, newTestDependencyWithConfig(cfg, db, redisClient))
 	ctx := context.Background()
 
 	userResp, err := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -290,7 +290,7 @@ func TestRedisUpdatePasswordRevokesOldTokens(t *testing.T) {
 	mr, redisClient, cleanupRedis := setupTestRedis(t, cfg)
 	defer cleanupRedis()
 
-	svc := NewUserService(newTestDependencyWithConfig(cfg, db, redisClient))
+	svc := mustNewUserService(t, newTestDependencyWithConfig(cfg, db, redisClient))
 	ctx := context.Background()
 
 	userResp, err := svc.CreateUser(ctx, &dto.CreateUserRequest{

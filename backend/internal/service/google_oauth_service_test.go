@@ -18,7 +18,7 @@ import (
 func TestGetGoogleOAuthURL(t *testing.T) {
 	db := setupTestDB(t.Name())
 	cfg := testutil.NewTestConfig()
-	svc := NewUserService(newTestDependencyWithConfig(cfg, db, nil))
+	svc := mustNewUserService(t, newTestDependencyWithConfig(cfg, db, nil))
 	ctx := context.Background()
 
 	t.Run("Success", func(t *testing.T) {
@@ -47,7 +47,7 @@ func TestGetGoogleOAuthURL(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_InvalidState(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	// Helper to parse redirect URL
@@ -82,7 +82,7 @@ func TestHandleGoogleOAuthCallback_InvalidState(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_Success(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	// Mock dependencies
@@ -207,7 +207,7 @@ func TestHandleGoogleOAuthCallback_Success(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_Errors(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	origExchange := ExchangeCodeForTokens
@@ -249,7 +249,7 @@ func TestHandleGoogleOAuthCallback_Errors(t *testing.T) {
 
 func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -319,7 +319,7 @@ func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 
 func TestCreateNewUserFromGoogleInfo(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	t.Run("Success", func(t *testing.T) {
@@ -369,7 +369,7 @@ func TestCreateNewUserFromGoogleInfo(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_DBError(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	origExchange := ExchangeCodeForTokens
@@ -405,7 +405,7 @@ func TestHandleGoogleOAuthCallback_DBError(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_LinkError(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	origExchange := ExchangeCodeForTokens
