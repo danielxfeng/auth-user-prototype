@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -26,6 +27,18 @@ func Auth(userService *service.UserService) gin.HandlerFunc {
 		userJwtPayload, err := jwt.ValidateUserTokenGeneric(userService.Dep, tokenString)
 		if err != nil {
 			_ = c.AbortWithError(401, authError.NewAuthError(401, "Invalid or expired token"))
+			return
+		}
+
+		err = userService.ValidateUserToken(c.Request.Context(), tokenString, userJwtPayload.UserID)
+		
+		var authError *authError.AuthError
+		if err != nil {
+			if errors.As(err, &authError) && authError.Status == 401 {
+				_ = c.AbortWithError(401, authError)
+				return
+			}
+			_ = c.AbortWithError(500, err)
 			return
 		}
 
