@@ -8,29 +8,46 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
+	"github.com/paularynty/transcendence/auth-service-go/internal/service"
 	"github.com/paularynty/transcendence/auth-service-go/internal/testutil"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
-func setupAuthDep(t *testing.T) *dependency.Dependency {
+func setupAuthDeps(t *testing.T) (*dependency.Dependency, *service.UserService) {
 	t.Helper()
 	cfg := testutil.NewTestConfig()
 	cfg.JwtSecret = "test-secret-key"
 	cfg.UserTokenExpiry = 3600
 	cfg.OauthStateTokenExpiry = 120
 	cfg.TwoFaTokenExpiry = 300
-	return testutil.NewTestDependency(cfg, nil, nil, nil)
+	dbName := "file:" + t.Name() + "?mode=memory&cache=shared"
+	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{TranslateError: true})
+	if err != nil {
+		t.Fatalf("failed to connect to db: %v", err)
+	}
+	if err := db.AutoMigrate(&model.User{}, &model.Token{}); err != nil {
+		t.Fatalf("failed to migrate db: %v", err)
+	}
+	dep := testutil.NewTestDependency(cfg, db, nil, nil)
+	userService, err := service.NewUserService(dep)
+	if err != nil {
+		t.Fatalf("failed to create user service: %v", err)
+	}
+	return dep, userService
 }
 
 func TestAuthMiddlewareRejectsMissingToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	dep := setupAuthDep(t)
+	_, userService := setupAuthDeps(t)
 
 	r := gin.New()
 	r.Use(middleware.ErrorHandler())
-	r.Use(middleware.Auth(dep))
+	r.Use(middleware.Auth(userService))
 	r.GET("/protected", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	})
@@ -56,16 +73,22 @@ func TestAuthMiddlewareRejectsMissingToken(t *testing.T) {
 
 func TestAuthMiddlewareAllowsValidToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	dep := setupAuthDep(t)
+	dep, userService := setupAuthDeps(t)
 
 	token, err := jwt.SignUserToken(dep, 99)
 	if err != nil {
 		t.Fatalf("failed to sign user token: %v", err)
 	}
+	if err := dep.DB.Create(&model.User{Model: gorm.Model{ID: 99}, Username: "u99", Email: "u99@example.com"}).Error; err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+	if err := dep.DB.Create(&model.Token{UserID: 99, Token: token}).Error; err != nil {
+		t.Fatalf("failed to create token: %v", err)
+	}
 
 	r := gin.New()
 	r.Use(middleware.ErrorHandler())
-	r.Use(middleware.Auth(dep))
+	r.Use(middleware.Auth(userService))
 	r.GET("/protected", func(c *gin.Context) {
 		userID, ok := c.Get("userID")
 		if !ok {
@@ -97,7 +120,7 @@ func TestAuthMiddlewareAllowsValidToken(t *testing.T) {
 
 func TestAuthMiddlewareRejectsInvalidToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	dep := setupAuthDep(t)
+	dep, userService := setupAuthDeps(t)
 
 	token, err := jwt.SignTwoFAToken(dep, 10)
 	if err != nil {
@@ -106,7 +129,7 @@ func TestAuthMiddlewareRejectsInvalidToken(t *testing.T) {
 
 	r := gin.New()
 	r.Use(middleware.ErrorHandler())
-	r.Use(middleware.Auth(dep))
+	r.Use(middleware.Auth(userService))
 	r.GET("/protected", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	})

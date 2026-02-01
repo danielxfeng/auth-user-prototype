@@ -9,10 +9,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
+	authError "github.com/paularynty/transcendence/auth-service-go/internal/auth_error"
 	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
-	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
 	"github.com/redis/go-redis/v9"
 )
@@ -47,7 +47,7 @@ func (s *UserService) CreateUser(ctx context.Context, request *dto.CreateUserReq
 	err = gorm.G[model.User](s.Dep.DB).Create(ctx, &modelUser)
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return nil, middleware.NewAuthError(409, "username or email already in use")
+			return nil, authError.NewAuthError(409, "username or email already in use")
 		}
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func (s *UserService) LoginUser(ctx context.Context, request *dto.LoginUserReque
 	modelUser, err := gorm.G[model.User](s.Dep.DB).Where(identifierField+" = ?", request.Identifier.Identifier).First(ctx)
 	if err != nil || modelUser.PasswordHash == nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) || modelUser.PasswordHash == nil {
-			return nil, middleware.NewAuthError(401, "invalid credentials")
+			return nil, authError.NewAuthError(401, "invalid credentials")
 		}
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (s *UserService) LoginUser(ctx context.Context, request *dto.LoginUserReque
 	err = bcrypt.CompareHashAndPassword([]byte(*modelUser.PasswordHash), []byte(request.Password.Password))
 	if err != nil {
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			return nil, middleware.NewAuthError(401, "invalid credentials")
+			return nil, authError.NewAuthError(401, "invalid credentials")
 		}
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (s *UserService) GetUserByID(ctx context.Context, userID uint) (*dto.UserWi
 	modelUser, err := gorm.G[model.User](s.Dep.DB).Where("id = ?", userID).First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, middleware.NewAuthError(404, "user not found")
+			return nil, authError.NewAuthError(404, "user not found")
 		}
 		return nil, err
 	}
@@ -126,19 +126,19 @@ func (s *UserService) UpdateUserPassword(ctx context.Context, userID uint, reque
 	modelUser, err := gorm.G[model.User](s.Dep.DB).Where("id = ?", userID).First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, middleware.NewAuthError(404, "user not found")
+			return nil, authError.NewAuthError(404, "user not found")
 		}
 		return nil, err
 	}
 
 	if modelUser.PasswordHash == nil {
-		return nil, middleware.NewAuthError(400, "password cannot be changed for OAuth users")
+		return nil, authError.NewAuthError(400, "password cannot be changed for OAuth users")
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(*modelUser.PasswordHash), []byte(request.OldPassword.OldPassword))
 	if err != nil {
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			return nil, middleware.NewAuthError(401, "invalid credentials")
+			return nil, authError.NewAuthError(401, "invalid credentials")
 		}
 		return nil, err
 	}
@@ -165,7 +165,7 @@ func (s *UserService) UpdateUserProfile(ctx context.Context, userID uint, reques
 	modelUser, err := gorm.G[model.User](s.Dep.DB).Where("id = ?", userID).First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, middleware.NewAuthError(404, "user not found")
+			return nil, authError.NewAuthError(404, "user not found")
 		}
 		return nil, err
 	}
@@ -178,7 +178,7 @@ func (s *UserService) UpdateUserProfile(ctx context.Context, userID uint, reques
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return nil, middleware.NewAuthError(409, "username or email already in use")
+			return nil, authError.NewAuthError(409, "username or email already in use")
 		}
 		return nil, err
 	}
@@ -239,13 +239,13 @@ func (s *UserService) validateUserTokenDB(ctx context.Context, token string, use
 	modelToken, err := gorm.G[model.Token](s.Dep.DB).Where("token = ?", token).First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return middleware.NewAuthError(401, "invalid token")
+			return authError.NewAuthError(401, "invalid token")
 		}
 		return err
 	}
 
 	if modelToken.UserID != userId {
-		return middleware.NewAuthError(401, "token does not match user")
+		return authError.NewAuthError(401, "token does not match user")
 	}
 
 	s.updateHeartBeat(userId)
@@ -256,7 +256,7 @@ func (s *UserService) validateUserTokenRedis(ctx context.Context, token string, 
 	_, err := s.Dep.Redis.Get(ctx, buildTokenKey(userId, token)).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			return middleware.NewAuthError(401, "invalid token")
+			return authError.NewAuthError(401, "invalid token")
 		}
 		return err
 	}

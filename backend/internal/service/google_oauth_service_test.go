@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"cloud.google.com/go/auth/credentials/idtoken"
+	authError "github.com/paularynty/transcendence/auth-service-go/internal/auth_error"
 	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
-	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 	"github.com/paularynty/transcendence/auth-service-go/internal/testutil"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
 )
@@ -18,7 +18,7 @@ import (
 func TestGetGoogleOAuthURL(t *testing.T) {
 	db := setupTestDB(t.Name())
 	cfg := testutil.NewTestConfig()
-	svc := NewUserService(newTestDependencyWithConfig(cfg, db, nil))
+	svc := mustNewUserService(t, newTestDependencyWithConfig(cfg, db, nil))
 	ctx := context.Background()
 
 	t.Run("Success", func(t *testing.T) {
@@ -47,7 +47,7 @@ func TestGetGoogleOAuthURL(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_InvalidState(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	// Helper to parse redirect URL
@@ -82,7 +82,7 @@ func TestHandleGoogleOAuthCallback_InvalidState(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_Success(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	// Mock dependencies
@@ -207,7 +207,7 @@ func TestHandleGoogleOAuthCallback_Success(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_Errors(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	origExchange := ExchangeCodeForTokens
@@ -249,7 +249,7 @@ func TestHandleGoogleOAuthCallback_Errors(t *testing.T) {
 
 func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -273,7 +273,7 @@ func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected linking to be blocked")
 		}
-		authErr, ok := err.(*middleware.AuthError)
+		authErr, ok := err.(*authError.AuthError)
 		if !ok {
 			t.Fatalf("expected AuthError, got %T: %v", err, err)
 		}
@@ -297,7 +297,7 @@ func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 			Email: "other@e.com",
 		}
 		err := svc.linkGoogleAccountToExistingUser(ctx, &modelUser, googleInfo)
-		authErr, ok := err.(*middleware.AuthError)
+		authErr, ok := err.(*authError.AuthError)
 		if err == nil || !ok || authErr.Status != 409 {
 			t.Errorf("expected 409 AuthError, got %v", err)
 		}
@@ -310,7 +310,7 @@ func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 			Email: "link@e.com",
 		}
 		err := svc.linkGoogleAccountToExistingUser(ctx, &modelUser, googleInfo)
-		authErr, ok := err.(*middleware.AuthError)
+		authErr, ok := err.(*authError.AuthError)
 		if err == nil || !ok || authErr.Status != 409 {
 			t.Errorf("expected 409 AuthError, got %v", err)
 		}
@@ -319,7 +319,7 @@ func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 
 func TestCreateNewUserFromGoogleInfo(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	t.Run("Success", func(t *testing.T) {
@@ -369,7 +369,7 @@ func TestCreateNewUserFromGoogleInfo(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_DBError(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	origExchange := ExchangeCodeForTokens
@@ -405,7 +405,7 @@ func TestHandleGoogleOAuthCallback_DBError(t *testing.T) {
 
 func TestHandleGoogleOAuthCallback_LinkError(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	origExchange := ExchangeCodeForTokens

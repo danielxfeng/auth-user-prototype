@@ -11,10 +11,10 @@ import (
 
 	"cloud.google.com/go/auth/credentials/idtoken"
 	"github.com/google/uuid"
+	authError "github.com/paularynty/transcendence/auth-service-go/internal/auth_error"
 	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
-	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
 	"gorm.io/gorm"
 )
@@ -109,18 +109,18 @@ var ExchangeCodeForTokens = func(dep *dependency.Dependency, ctx context.Context
 var FetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
 	sub := payload.Subject
 	if sub == "" {
-		return nil, middleware.NewAuthError(400, "google id token missing subject")
+		return nil, authError.NewAuthError(400, "google id token missing subject")
 	}
 
 	jsonClaims, err := json.Marshal(payload.Claims)
 	if err != nil {
-		return nil, middleware.NewAuthError(500, "failed to Marshal google jwt token")
+		return nil, authError.NewAuthError(500, "failed to Marshal google jwt token")
 	}
 
 	var claims dto.GoogleClaims
 	err = json.Unmarshal(jsonClaims, &claims)
 	if err != nil {
-		return nil, middleware.NewAuthError(500, "failed to Unmarshal google jwt token")
+		return nil, authError.NewAuthError(500, "failed to Unmarshal google jwt token")
 	}
 
 	googleUserInfo := &dto.GoogleUserData{
@@ -138,7 +138,7 @@ var FetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, e
 
 // This feature does not work unless we can verify the user's password/email ownership.
 func (s *UserService) linkGoogleAccountToExistingUser(ctx context.Context, modelUser *model.User, googleUserInfo *dto.GoogleUserData) error {
-	return middleware.NewAuthError(409, "same email exists")
+	return authError.NewAuthError(409, "same email exists")
 
 	/**
 
@@ -176,7 +176,7 @@ func (s *UserService) createNewUserFromGoogleInfo(ctx context.Context, googleUse
 	if isRetry {
 		uuidUsername, err := uuid.NewRandom()
 		if err != nil {
-			return nil, middleware.NewAuthError(500, "failed to generate UUID for Google user")
+			return nil, authError.NewAuthError(500, "failed to generate UUID for Google user")
 		}
 		username = "G_" + uuidUsername.String()
 	} else {
@@ -202,7 +202,7 @@ func (s *UserService) createNewUserFromGoogleInfo(ctx context.Context, googleUse
 			if !isRetry {
 				return s.createNewUserFromGoogleInfo(ctx, googleUserInfo, true)
 			}
-			return nil, middleware.NewAuthError(409, "username or email already in use")
+			return nil, authError.NewAuthError(409, "username or email already in use")
 		}
 		return nil, err
 	}
@@ -244,10 +244,12 @@ func (s *UserService) HandleGoogleOAuthCallback(ctx context.Context, code string
 		modelUser, err = gorm.G[model.User](s.Dep.DB).Where("email = ?", googleUserInfo.Email).First(ctx)
 		if err == nil { // User with this email exists, link Google account
 
+			// Autolinking is disabled and always returns 409 for now, as we cannot verify ownership of the email/password here.
 			err = s.linkGoogleAccountToExistingUser(ctx, &modelUser, googleUserInfo)
 			if err != nil { // Failed to link Google account
 				return HandleGoogleOAuthCallbackError(s.Dep, err, "failed to link google account to existing user")
 			}
+
 			// Successfully linked Google account
 			finalUserID = modelUser.ID
 		} else if !errors.Is(err, gorm.ErrRecordNotFound) {

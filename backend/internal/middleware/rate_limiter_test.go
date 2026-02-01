@@ -15,7 +15,7 @@ import (
 func TestAllowRequestResetsAfterWindow(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	rl := middleware.NewRateLimiter(30*time.Millisecond, 2)
+	rl := middleware.NewRateLimiter(30*time.Millisecond, 2, time.Minute)
 	clientID := "client-1"
 
 	if !rl.AllowRequest(clientID) {
@@ -38,7 +38,7 @@ func TestAllowRequestResetsAfterWindow(t *testing.T) {
 func TestRateLimitMiddlewareBlocksAfterLimit(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	rl := middleware.NewRateLimiter(50*time.Millisecond, 1)
+	rl := middleware.NewRateLimiter(50*time.Millisecond, 1, time.Minute)
 
 	r := gin.New()
 	r.Use(middleware.ErrorHandler())
@@ -76,7 +76,7 @@ func TestRateLimitMiddlewareBlocksAfterLimit(t *testing.T) {
 func TestRateLimitMiddlewareSkipsOptions(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	rl := middleware.NewRateLimiter(50*time.Millisecond, 1)
+	rl := middleware.NewRateLimiter(50*time.Millisecond, 1, time.Minute)
 
 	r := gin.New()
 	r.Use(middleware.ErrorHandler())
@@ -116,7 +116,7 @@ func TestRateLimitMiddlewareSkipsOptions(t *testing.T) {
 func TestRateLimitMiddlewareUsesClientSpecificCounters(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	rl := middleware.NewRateLimiter(100*time.Millisecond, 1)
+	rl := middleware.NewRateLimiter(100*time.Millisecond, 1, time.Minute)
 
 	r := gin.New()
 	r.Use(middleware.ErrorHandler())

@@ -5,23 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	authError "github.com/paularynty/transcendence/auth-service-go/internal/auth_error"
 )
-
-type AuthError struct {
-	Status  int
-	Message string
-}
-
-func (e *AuthError) Error() string {
-	return e.Message
-}
-
-func NewAuthError(status int, message string) *AuthError {
-	return &AuthError{
-		Status:  status,
-		Message: message,
-	}
-}
 
 func ErrorHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -35,7 +20,7 @@ func ErrorHandler() gin.HandlerFunc {
 
 		err := c.Errors.Last().Err
 
-		var authErr *AuthError
+		var authErr *authError.AuthError
 
 		// Handle AuthError specifically
 		if errors.As(err, &authErr) {

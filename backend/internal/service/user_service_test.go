@@ -5,14 +5,14 @@ import (
 	"strings"
 	"testing"
 
+	authError "github.com/paularynty/transcendence/auth-service-go/internal/auth_error"
 	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
-	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 )
 
 func requireAuthStatus(t *testing.T, err error, status int) {
 	t.Helper()
-	authErr, ok := err.(*middleware.AuthError)
+	authErr, ok := err.(*authError.AuthError)
 	if !ok || authErr.Status != status {
 		t.Fatalf("expected %d error, got %v", status, err)
 	}
@@ -20,7 +20,7 @@ func requireAuthStatus(t *testing.T, err error, status int) {
 
 func TestCreateUser(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	cases := []struct {
@@ -112,7 +112,7 @@ func TestCreateUser(t *testing.T) {
 
 func TestLoginUser(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	// Setup user
@@ -165,7 +165,7 @@ func TestLoginUser(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error")
 		}
-		authErr, ok := err.(*middleware.AuthError)
+		authErr, ok := err.(*authError.AuthError)
 		if !ok || authErr.Status != 401 {
 			t.Errorf("expected 401 error, got %v", err)
 		}
@@ -181,7 +181,7 @@ func TestLoginUser(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error")
 		}
-		authErr, ok := err.(*middleware.AuthError)
+		authErr, ok := err.(*authError.AuthError)
 		if !ok || authErr.Status != 401 {
 			t.Errorf("expected 401 error, got %v", err)
 		}
@@ -228,7 +228,7 @@ func TestLoginUser(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error")
 		}
-		authErr, ok := err.(*middleware.AuthError)
+		authErr, ok := err.(*authError.AuthError)
 		if !ok || authErr.Status != 401 {
 			t.Errorf("expected 401 error, got %v", err)
 		}
@@ -253,7 +253,7 @@ func TestLoginUser(t *testing.T) {
 			t.Fatal("expected error")
 		}
 		// Should return raw error, not AuthError
-		if _, ok := err.(*middleware.AuthError); ok {
+		if _, ok := err.(*authError.AuthError); ok {
 			t.Error("expected raw error for invalid hash")
 		}
 	})
@@ -261,7 +261,7 @@ func TestLoginUser(t *testing.T) {
 
 func TestGetUserByID(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -303,7 +303,7 @@ func TestGetUserByID(t *testing.T) {
 
 func TestUpdateUserPassword(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -399,7 +399,7 @@ func TestUpdateUserPassword(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error")
 		}
-		if _, ok := err.(*middleware.AuthError); ok {
+		if _, ok := err.(*authError.AuthError); ok {
 			t.Error("expected raw error")
 		}
 	})
@@ -407,7 +407,7 @@ func TestUpdateUserPassword(t *testing.T) {
 
 func TestUpdateUserProfile(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -480,7 +480,7 @@ func TestUpdateUserProfile(t *testing.T) {
 
 func TestDeleteUser(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	u, _ := svc.CreateUser(ctx, &dto.CreateUserRequest{
@@ -506,7 +506,7 @@ func TestDeleteUser(t *testing.T) {
 
 func TestValidateUserToken(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	createReq := &dto.CreateUserRequest{
@@ -563,7 +563,7 @@ func TestValidateUserToken(t *testing.T) {
 
 func TestLogoutUser(t *testing.T) {
 	db := setupTestDB(t.Name())
-	svc := NewUserService(newTestDependency(db, nil))
+	svc := mustNewUserService(t, newTestDependency(db, nil))
 	ctx := context.Background()
 
 	createReq := &dto.CreateUserRequest{
@@ -673,7 +673,7 @@ func TestDBErrors(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			db := setupTestDB(t.Name())
-			svc := NewUserService(newTestDependency(db, nil))
+			svc := mustNewUserService(t, newTestDependency(db, nil))
 			sqlDB, _ := db.DB()
 			_ = sqlDB.Close()
 

@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	authError "github.com/paularynty/transcendence/auth-service-go/internal/auth_error"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 )
@@ -19,7 +20,7 @@ func TestErrorHandlerReturnsAuthErrorPayload(t *testing.T) {
 	r := gin.New()
 	r.Use(middleware.ErrorHandler())
 	r.GET("/auth", func(c *gin.Context) {
-		_ = c.AbortWithError(http.StatusUnauthorized, middleware.NewAuthError(http.StatusUnauthorized, "Invalid or expired token"))
+		_ = c.AbortWithError(http.StatusUnauthorized, authError.NewAuthError(http.StatusUnauthorized, "Invalid or expired token"))
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/auth", nil)

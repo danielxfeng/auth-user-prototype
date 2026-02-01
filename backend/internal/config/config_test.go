@@ -4,24 +4,18 @@ import (
 	"testing"
 )
 
-func assertPanics(t *testing.T, fn func(), name string) {
+func assertError(t *testing.T, err error, name string) {
 	t.Helper()
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatalf("expected panic for %s", name)
-		}
-	}()
-	fn()
+	if err == nil {
+		t.Fatalf("expected error for %s", name)
+	}
 }
 
-func assertNotPanics(t *testing.T, fn func(), name string) {
+func assertNoError(t *testing.T, err error, name string) {
 	t.Helper()
-	defer func() {
-		if r := recover(); r != nil {
-			t.Fatalf("unexpected panic for %s: %v", name, r)
-		}
-	}()
-	fn()
+	if err != nil {
+		t.Fatalf("unexpected error for %s: %v", name, err)
+	}
 }
 
 func TestGetEnvStrOrDefault(t *testing.T) {
@@ -36,18 +30,17 @@ func TestGetEnvStrOrDefault(t *testing.T) {
 	}
 }
 
-func TestGetEnvStrOrPanic(t *testing.T) {
+func TestGetEnvStrOrError(t *testing.T) {
 	t.Setenv("TEST_PANIC", "")
-	assertPanics(t, func() {
-		_ = getEnvStrOrPanic("TEST_PANIC")
-	}, "empty env")
+	_, err := getEnvStrOrError("TEST_PANIC")
+	assertError(t, err, "empty env")
 
 	t.Setenv("TEST_PANIC", "value")
-	assertNotPanics(t, func() {
-		if got := getEnvStrOrPanic("TEST_PANIC"); got != "value" {
-			t.Fatalf("expected env value, got %q", got)
-		}
-	}, "set env")
+	got, err := getEnvStrOrError("TEST_PANIC")
+	assertNoError(t, err, "set env")
+	if got != "value" {
+		t.Fatalf("expected env value, got %q", got)
+	}
 }
 
 func TestGetEnvIntOrDefault(t *testing.T) {
@@ -67,29 +60,25 @@ func TestGetEnvIntOrDefault(t *testing.T) {
 	}
 }
 
-func TestLoadConfigFromEnv_PanicsOnMissingRequired(t *testing.T) {
+func TestLoadConfigFromEnv_ErrsOnMissingRequired(t *testing.T) {
 	t.Setenv("JWT_SECRET", "jwt")
 	t.Setenv("GOOGLE_CLIENT_ID", "client")
 	t.Setenv("GOOGLE_CLIENT_SECRET", "secret")
 
-	assertNotPanics(t, func() {
-		_ = LoadConfigFromEnv()
-	}, "all required set")
+	_, err := LoadConfigFromEnv()
+	assertNoError(t, err, "all required set")
 
 	t.Setenv("JWT_SECRET", "")
-	assertPanics(t, func() {
-		_ = LoadConfigFromEnv()
-	}, "JWT_SECRET unset")
+	_, err = LoadConfigFromEnv()
+	assertError(t, err, "JWT_SECRET unset")
 
 	t.Setenv("JWT_SECRET", "jwt")
 	t.Setenv("GOOGLE_CLIENT_ID", "")
-	assertPanics(t, func() {
-		_ = LoadConfigFromEnv()
-	}, "GOOGLE_CLIENT_ID unset")
+	_, err = LoadConfigFromEnv()
+	assertError(t, err, "GOOGLE_CLIENT_ID unset")
 
 	t.Setenv("GOOGLE_CLIENT_ID", "client")
 	t.Setenv("GOOGLE_CLIENT_SECRET", "")
-	assertPanics(t, func() {
-		_ = LoadConfigFromEnv()
-	}, "GOOGLE_CLIENT_SECRET unset")
+	_, err = LoadConfigFromEnv()
+	assertError(t, err, "GOOGLE_CLIENT_SECRET unset")
 }

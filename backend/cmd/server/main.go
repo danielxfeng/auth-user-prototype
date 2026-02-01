@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	swaggerfiles "github.com/swaggo/files"
@@ -12,10 +16,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	_ "github.com/paularynty/transcendence/auth-service-go/docs"
-	"github.com/paularynty/transcendence/auth-service-go/internal/config"
-	"github.com/paularynty/transcendence/auth-service-go/internal/db"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 	"github.com/paularynty/transcendence/auth-service-go/internal/routers"
+	"github.com/paularynty/transcendence/auth-service-go/internal/service"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util"
 
 	"log/slog"
@@ -56,7 +59,7 @@ func SetupRouter(dep *dependency.Dependency) *gin.Engine {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	rateLimiter := middleware.NewRateLimiter(60*time.Second, 1000)
+	rateLimiter := middleware.NewRateLimiter(time.Duration(dep.Cfg.RateLimiterDurationInSec)*time.Second, dep.Cfg.RateLimiterRequestLimit, time.Duration(dep.Cfg.RateLimiterCleanupIntervalInSec)*time.Second)
 	r.Use(rateLimiter.RateLimit())
 
 	r.Use(middleware.PanicHandler())
@@ -64,15 +67,6 @@ func SetupRouter(dep *dependency.Dependency) *gin.Engine {
 	r.Use(middleware.ErrorHandler())
 
 	return r
-}
-
-func initDependency() *dependency.Dependency {
-	logger := util.GetLogger(slog.LevelInfo)
-	cfg := config.LoadConfigFromEnv()
-	myDB := db.GetDB(cfg.DbAddress, logger)
-	redis := db.GetRedis(cfg.RedisURL, cfg, logger)
-
-	return dependency.NewDependency(cfg, myDB, redis, logger)
 }
 
 // @title Auth Service API
@@ -83,17 +77,28 @@ func main() {
 	// config
 	_ = godotenv.Load()
 
+	// logger
+	logger := util.GetLogger(slog.LevelDebug)
+
 	// init dependency
-	dep := initDependency()
-	defer db.CloseDB(dep.DB, dep.Logger)
-	defer db.CloseRedis(dep.Redis, dep.Logger)
+	dep, err := dependency.InitDependency(logger)
+	if err != nil {
+		util.LogFatalErr(logger, err, "failed to create dependency")
+	}
+	defer dependency.CloseDependency(dep)
 
 	// validator
 	dto.InitValidator()
 
+	// create services
+	userService, err := service.NewUserService(dep)
+	if err != nil {
+		util.LogFatalErr(logger, err, "failed to create user service")
+	}
+
 	// router
 	r := SetupRouter(dep)
-	routers.UsersRouter(r.Group("/api/users"), dep)
+	routers.UsersRouter(r.Group("/api/users"), userService)
 
 	// Health check
 	r.GET("/api/ping", func(c *gin.Context) {
@@ -105,8 +110,29 @@ func main() {
 	// Swagger
 	r.GET("/api/docs/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
-	if err := r.Run(":3003"); err != nil {
-		dep.Logger.Error("failed to start server", "err", err)
-		os.Exit(1)
+	// http server
+	srv := &http.Server{
+		Addr:    fmt.Sprintf(":%d", dep.Cfg.Port),
+		Handler: r,
 	}
+
+	// Start server
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			util.LogFatalErr(logger, err, "failed to start server")
+		}
+	}()
+
+	// Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit // consume the signal, blocking here
+	logger.Info("shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		util.LogFatalErr(logger, err, "server forced to shutdown")
+	}
+	logger.Info("server exiting")
 }

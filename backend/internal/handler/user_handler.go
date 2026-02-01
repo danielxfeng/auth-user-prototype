@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	authError "github.com/paularynty/transcendence/auth-service-go/internal/auth_error"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
-	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 	"github.com/paularynty/transcendence/auth-service-go/internal/service"
 )
 
@@ -15,24 +15,12 @@ type UserHandler struct {
 }
 
 func handleError(c *gin.Context, err error) {
-	var authErr *middleware.AuthError
+	var authErr *authError.AuthError
 	if errors.As(err, &authErr) {
 		_ = c.AbortWithError(authErr.Status, err)
 	} else {
 		_ = c.AbortWithError(500, err)
 	}
-}
-
-func (h *UserHandler) validateToken(c *gin.Context) (uint, error) {
-	userID := c.MustGet("userID").(uint)
-	token := c.MustGet("token").(string)
-
-	err := h.Service.ValidateUserToken(c.Request.Context(), token, userID)
-	if err != nil {
-		return 0, err
-	}
-
-	return userID, nil
 }
 
 // @BasePath /users
@@ -100,13 +88,9 @@ func (h *UserHandler) LoginUserHandler(c *gin.Context) {
 // @Success 204 {object} nil
 // @Router /logout [delete]
 func (h *UserHandler) LogoutUserHandler(c *gin.Context) {
-	userID, err := h.validateToken(c)
-	if err != nil {
-		handleError(c, err)
-		return
-	}
+	userID := c.MustGet("userID").(uint)
 
-	err = h.Service.LogoutUser(c.Request.Context(), userID)
+	err := h.Service.LogoutUser(c.Request.Context(), userID)
 	if err != nil {
 		handleError(c, err)
 		return
@@ -124,11 +108,7 @@ func (h *UserHandler) LogoutUserHandler(c *gin.Context) {
 // @Success 200 {object} dto.UserWithoutTokenResponse
 // @Router /me [get]
 func (h *UserHandler) GetLoggedUserProfileHandler(c *gin.Context) {
-	userID, err := h.validateToken(c)
-	if err != nil {
-		handleError(c, err)
-		return
-	}
+	userID := c.MustGet("userID").(uint)
 
 	user, err := h.Service.GetUserByID(c.Request.Context(), userID)
 	if err != nil {
@@ -150,11 +130,7 @@ func (h *UserHandler) GetLoggedUserProfileHandler(c *gin.Context) {
 // @Success 200 {object} dto.UserWithTokenResponse
 // @Router /password [put]
 func (h *UserHandler) UpdateLoggedUserPasswordHandler(c *gin.Context) {
-	userID, err := h.validateToken(c)
-	if err != nil {
-		handleError(c, err)
-		return
-	}
+	userID := c.MustGet("userID").(uint)
 
 	request := c.MustGet("validatedBody").(dto.UpdateUserPasswordRequest)
 
@@ -178,15 +154,11 @@ func (h *UserHandler) UpdateLoggedUserPasswordHandler(c *gin.Context) {
 // @Success 200 {object} dto.UserWithoutTokenResponse
 // @Router /me [put]
 func (h *UserHandler) UpdateLoggedUserProfileHandler(c *gin.Context) {
-	userId, err := h.validateToken(c)
-	if err != nil {
-		handleError(c, err)
-		return
-	}
+	userID := c.MustGet("userID").(uint)
 
 	request := c.MustGet("validatedBody").(dto.UpdateUserRequest)
 
-	user, err := h.Service.UpdateUserProfile(c.Request.Context(), userId, &request)
+	user, err := h.Service.UpdateUserProfile(c.Request.Context(), userID, &request)
 	if err != nil {
 		handleError(c, err)
 		return
@@ -204,13 +176,9 @@ func (h *UserHandler) UpdateLoggedUserProfileHandler(c *gin.Context) {
 // @Success 204 {object} nil
 // @Router /me [delete]
 func (h *UserHandler) DeleteLoggedUserHandler(c *gin.Context) {
-	userID, err := h.validateToken(c)
-	if err != nil {
-		handleError(c, err)
-		return
-	}
+	userID := c.MustGet("userID").(uint)
 
-	err = h.Service.DeleteUser(c.Request.Context(), userID)
+	err := h.Service.DeleteUser(c.Request.Context(), userID)
 	if err != nil {
 		handleError(c, err)
 		return
@@ -228,11 +196,7 @@ func (h *UserHandler) DeleteLoggedUserHandler(c *gin.Context) {
 // @Success 200 {object} dto.TwoFASetupResponse
 // @Router /2fa/setup [post]
 func (h *UserHandler) StartTwoFaSetupHandler(c *gin.Context) {
-	userID, err := h.validateToken(c)
-	if err != nil {
-		handleError(c, err)
-		return
-	}
+	userID := c.MustGet("userID").(uint)
 
 	response, err := h.Service.StartTwoFaSetup(c.Request.Context(), userID)
 	if err != nil {
@@ -254,11 +218,7 @@ func (h *UserHandler) StartTwoFaSetupHandler(c *gin.Context) {
 // @Success 200 {object} dto.UserWithTokenResponse
 // @Router /2fa/confirm [post]
 func (h *UserHandler) ConfirmTwoFaSetupHandler(c *gin.Context) {
-	userID, err := h.validateToken(c)
-	if err != nil {
-		handleError(c, err)
-		return
-	}
+	userID := c.MustGet("userID").(uint)
 
 	request := c.MustGet("validatedBody").(dto.TwoFAConfirmRequest)
 
@@ -282,11 +242,7 @@ func (h *UserHandler) ConfirmTwoFaSetupHandler(c *gin.Context) {
 // @Success 200 {object} dto.UserWithTokenResponse
 // @Router /2fa/disable [put]
 func (h *UserHandler) DisableTwoFaHandler(c *gin.Context) {
-	userID, err := h.validateToken(c)
-	if err != nil {
-		handleError(c, err)
-		return
-	}
+	userID := c.MustGet("userID").(uint)
 
 	request := c.MustGet("validatedBody").(dto.DisableTwoFARequest)
 
@@ -329,11 +285,7 @@ func (h *UserHandler) TwoFaSubmitHandler(c *gin.Context) {
 // @Success 200 {array} dto.SimpleUser
 // @Router / [get]
 func (h *UserHandler) GetUsersWithLimitedInfoHandler(c *gin.Context) {
-	_, err := h.validateToken(c)
-	if err != nil {
-		handleError(c, err)
-		return
-	}
+	_ = c.MustGet("userID").(uint)
 
 	users, err := h.Service.GetAllUsersLimitedInfo(c.Request.Context())
 	if err != nil {
@@ -353,11 +305,7 @@ func (h *UserHandler) GetUsersWithLimitedInfoHandler(c *gin.Context) {
 // @Success 200 {array} dto.FriendResponse
 // @Router /friends [get]
 func (h *UserHandler) GetLoggedUsersFriendsHandler(c *gin.Context) {
-	userID, err := h.validateToken(c)
-	if err != nil {
-		handleError(c, err)
-		return
-	}
+	userID := c.MustGet("userID").(uint)
 
 	friends, err := h.Service.GetUserFriends(c.Request.Context(), userID)
 	if err != nil {
@@ -379,15 +327,11 @@ func (h *UserHandler) GetLoggedUsersFriendsHandler(c *gin.Context) {
 // @Success 201 {object} nil
 // @Router /friends [post]
 func (h *UserHandler) AddFriendHandler(c *gin.Context) {
-	userID, err := h.validateToken(c)
-	if err != nil {
-		handleError(c, err)
-		return
-	}
+	userID := c.MustGet("userID").(uint)
 
 	request := c.MustGet("validatedBody").(dto.AddNewFriendRequest)
 
-	err = h.Service.AddNewFriend(c.Request.Context(), userID, &request)
+	err := h.Service.AddNewFriend(c.Request.Context(), userID, &request)
 	if err != nil {
 		handleError(c, err)
 		return
@@ -405,11 +349,7 @@ func (h *UserHandler) AddFriendHandler(c *gin.Context) {
 // @Success 200 {object} dto.UserValidationResponse
 // @Router /validate [post]
 func (h *UserHandler) ValidateUserHandler(c *gin.Context) {
-	userID, err := h.validateToken(c)
-	if err != nil {
-		handleError(c, err)
-		return
-	}
+	userID := c.MustGet("userID").(uint)
 
 	c.JSON(200, dto.UserValidationResponse{UserID: userID})
 }
@@ -443,14 +383,14 @@ func (h *UserHandler) GoogleCallbackHandler(c *gin.Context) {
 	state := c.Query("state")
 
 	if code == "" || state == "" {
-		handleError(c, middleware.NewAuthError(400, "Missing code or state in callback"))
+		handleError(c, authError.NewAuthError(400, "Missing code or state in callback"))
 		return
 	}
 
 	url := h.Service.HandleGoogleOAuthCallback(c.Request.Context(), code, state)
 
 	if url == "" {
-		handleError(c, middleware.NewAuthError(500, "Failed to process Google OAuth callback"))
+		handleError(c, authError.NewAuthError(500, "Failed to process Google OAuth callback"))
 		return
 	}
 
