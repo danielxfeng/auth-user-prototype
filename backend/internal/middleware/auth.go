@@ -29,8 +29,6 @@ func Auth(userService *service.UserService) gin.HandlerFunc {
 			return
 		}
 
-		
-
 		c.Set("userID", userJwtPayload.UserID)
 		c.Set("token", tokenString)
 

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
+	authError "github.com/paularynty/transcendence/auth-service-go/internal/auth_error"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
-	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
 	"github.com/pquerna/otp/totp"
 )
@@ -77,7 +77,7 @@ func TestTwoFASetupAndConfirm(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error")
 		}
-		authErr, ok := err.(*middleware.AuthError)
+		authErr, ok := err.(*authError.AuthError)
 		if !ok || authErr.Status != 400 {
 			t.Errorf("expected 400 error, got %v", err)
 		}
@@ -100,7 +100,7 @@ func TestTwoFASetupAndConfirm(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for oauth user")
 		}
-		authErr, ok := err.(*middleware.AuthError)
+		authErr, ok := err.(*authError.AuthError)
 		if !ok || authErr.Status != 400 {
 			t.Errorf("expected 400 error, got %v", err)
 		}
@@ -393,7 +393,7 @@ func TestDisableTwoFA(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for oauth user")
 		}
-		authErr, ok := err.(*middleware.AuthError)
+		authErr, ok := err.(*authError.AuthError)
 		if !ok || authErr.Status != 400 {
 			t.Errorf("expected 400 error, got %v", err)
 		}
@@ -438,7 +438,7 @@ func TestDisableTwoFA(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for invalid password")
 		}
-		authErr, ok := err.(*middleware.AuthError)
+		authErr, ok := err.(*authError.AuthError)
 		if !ok || authErr.Status != 401 {
 			t.Errorf("expected 401 error, got %v", err)
 		}

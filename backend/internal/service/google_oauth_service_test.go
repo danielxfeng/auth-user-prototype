@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"cloud.google.com/go/auth/credentials/idtoken"
+	authError "github.com/paularynty/transcendence/auth-service-go/internal/auth_error"
 	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
-	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 	"github.com/paularynty/transcendence/auth-service-go/internal/testutil"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
 )
@@ -273,7 +273,7 @@ func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected linking to be blocked")
 		}
-		authErr, ok := err.(*middleware.AuthError)
+		authErr, ok := err.(*authError.AuthError)
 		if !ok {
 			t.Fatalf("expected AuthError, got %T: %v", err, err)
 		}
@@ -297,7 +297,7 @@ func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 			Email: "other@e.com",
 		}
 		err := svc.linkGoogleAccountToExistingUser(ctx, &modelUser, googleInfo)
-		authErr, ok := err.(*middleware.AuthError)
+		authErr, ok := err.(*authError.AuthError)
 		if err == nil || !ok || authErr.Status != 409 {
 			t.Errorf("expected 409 AuthError, got %v", err)
 		}
@@ -310,7 +310,7 @@ func TestLinkGoogleAccountToExistingUser(t *testing.T) {
 			Email: "link@e.com",
 		}
 		err := svc.linkGoogleAccountToExistingUser(ctx, &modelUser, googleInfo)
-		authErr, ok := err.(*middleware.AuthError)
+		authErr, ok := err.(*authError.AuthError)
 		if err == nil || !ok || authErr.Status != 409 {
 			t.Errorf("expected 409 AuthError, got %v", err)
 		}

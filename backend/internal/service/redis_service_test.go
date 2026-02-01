@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
+	authError "github.com/paularynty/transcendence/auth-service-go/internal/auth_error"
 	"github.com/paularynty/transcendence/auth-service-go/internal/config"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
-	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 	"github.com/paularynty/transcendence/auth-service-go/internal/testutil"
 	"github.com/redis/go-redis/v9"
 )
@@ -80,7 +80,7 @@ func TestRedisTokenLifecycle(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected token to be invalid after logout")
 	}
-	var authErr *middleware.AuthError
+	var authErr *authError.AuthError
 	if !strings.Contains(err.Error(), "invalid token") || !errors.As(err, &authErr) {
 		t.Fatalf("expected auth error for invalid token, got %v", err)
 	}

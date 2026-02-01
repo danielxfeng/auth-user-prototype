@@ -5,14 +5,14 @@ import (
 	"strings"
 	"testing"
 
+	authError "github.com/paularynty/transcendence/auth-service-go/internal/auth_error"
 	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
-	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 )
 
 func requireAuthStatus(t *testing.T, err error, status int) {
 	t.Helper()
-	authErr, ok := err.(*middleware.AuthError)
+	authErr, ok := err.(*authError.AuthError)
 	if !ok || authErr.Status != status {
 		t.Fatalf("expected %d error, got %v", status, err)
 	}
@@ -165,7 +165,7 @@ func TestLoginUser(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error")
 		}
-		authErr, ok := err.(*middleware.AuthError)
+		authErr, ok := err.(*authError.AuthError)
 		if !ok || authErr.Status != 401 {
 			t.Errorf("expected 401 error, got %v", err)
 		}
@@ -181,7 +181,7 @@ func TestLoginUser(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error")
 		}
-		authErr, ok := err.(*middleware.AuthError)
+		authErr, ok := err.(*authError.AuthError)
 		if !ok || authErr.Status != 401 {
 			t.Errorf("expected 401 error, got %v", err)
 		}
@@ -228,7 +228,7 @@ func TestLoginUser(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error")
 		}
-		authErr, ok := err.(*middleware.AuthError)
+		authErr, ok := err.(*authError.AuthError)
 		if !ok || authErr.Status != 401 {
 			t.Errorf("expected 401 error, got %v", err)
 		}
@@ -253,7 +253,7 @@ func TestLoginUser(t *testing.T) {
 			t.Fatal("expected error")
 		}
 		// Should return raw error, not AuthError
-		if _, ok := err.(*middleware.AuthError); ok {
+		if _, ok := err.(*authError.AuthError); ok {
 			t.Error("expected raw error for invalid hash")
 		}
 	})
@@ -399,7 +399,7 @@ func TestUpdateUserPassword(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error")
 		}
-		if _, ok := err.(*middleware.AuthError); ok {
+		if _, ok := err.(*authError.AuthError); ok {
 			t.Error("expected raw error")
 		}
 	})
