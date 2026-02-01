@@ -1,84 +1,216 @@
 package config
 
 import (
+	"fmt"
 	"testing"
 )
 
-func assertError(t *testing.T, err error, name string) {
-	t.Helper()
-	if err == nil {
-		t.Fatalf("expected error for %s", name)
-	}
-}
+const testKey = "TEST_KEY"
+const notSet = "notSet"
 
-func assertNoError(t *testing.T, err error, name string) {
+func setEnv(t *testing.T, v string) {
 	t.Helper()
-	if err != nil {
-		t.Fatalf("unexpected error for %s: %v", name, err)
+
+	if v == notSet {
+		return
 	}
+
+	t.Setenv(testKey, v)
 }
 
 func TestGetEnvStrOrDefault(t *testing.T) {
-	t.Setenv("TEST_STR", "")
-	if got := getEnvStrOrDefault("TEST_STR", "fallback"); got != "fallback" {
-		t.Fatalf("expected default value, got %q", got)
+	const validValue = "v1"
+	const defaultValue = "v"
+	const emptyValue = ""
+
+	testCases := []struct {
+		name     string
+		envValue string
+		expected string
+	}{
+		{
+			name:     "valid env string",
+			envValue: validValue,
+			expected: validValue,
+		},
+		{
+			name:     "empty env string",
+			envValue: emptyValue,
+			expected: defaultValue,
+		},
+		{
+			name:     "env not set",
+			envValue: notSet,
+			expected: defaultValue,
+		},
 	}
 
-	t.Setenv("TEST_STR", "value")
-	if got := getEnvStrOrDefault("TEST_STR", "fallback"); got != "value" {
-		t.Fatalf("expected env value, got %q", got)
-	}
-}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			setEnv(t, tc.envValue)
 
-func TestGetEnvStrOrError(t *testing.T) {
-	t.Setenv("TEST_PANIC", "")
-	_, err := getEnvStrOrError("TEST_PANIC")
-	assertError(t, err, "empty env")
-
-	t.Setenv("TEST_PANIC", "value")
-	got, err := getEnvStrOrError("TEST_PANIC")
-	assertNoError(t, err, "set env")
-	if got != "value" {
-		t.Fatalf("expected env value, got %q", got)
+			if got := getEnvStrOrDefault(testKey, defaultValue); got != tc.expected {
+				t.Fatalf("expect: %q, got %q", tc.expected, got)
+			}
+		})
 	}
 }
 
 func TestGetEnvIntOrDefault(t *testing.T) {
-	t.Setenv("TEST_INT", "")
-	if got := getEnvIntOrDefault("TEST_INT", 7); got != 7 {
-		t.Fatalf("expected default value, got %d", got)
+	const validValue = "10"
+	const validExpected = 10
+	const defaultValue = 22
+	const invalidValue = "a"
+
+	testCases := []struct {
+		name     string
+		envValue string
+		expected int
+	}{
+		{
+			name:     "valid env (int)",
+			envValue: validValue,
+			expected: validExpected,
+		},
+		{
+			name:     "env not set (int)",
+			envValue: notSet,
+			expected: defaultValue,
+		},
+		{
+			name:     "invalid env (int)",
+			envValue: invalidValue,
+			expected: defaultValue,
+		},
 	}
 
-	t.Setenv("TEST_INT", "42")
-	if got := getEnvIntOrDefault("TEST_INT", 7); got != 42 {
-		t.Fatalf("expected env value, got %d", got)
-	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			setEnv(t, tc.envValue)
 
-	t.Setenv("TEST_INT", "not-an-int")
-	if got := getEnvIntOrDefault("TEST_INT", 7); got != 7 {
-		t.Fatalf("expected default value for invalid int, got %d", got)
+			if got := getEnvIntOrDefault(testKey, defaultValue); got != tc.expected {
+				t.Fatalf("expected: %d, got: %d", tc.expected, got)
+			}
+		})
 	}
 }
 
-func TestLoadConfigFromEnv_ErrsOnMissingRequired(t *testing.T) {
-	t.Setenv("JWT_SECRET", "jwt")
-	t.Setenv("GOOGLE_CLIENT_ID", "client")
-	t.Setenv("GOOGLE_CLIENT_SECRET", "secret")
+func TestGetEnvStrOrError(t *testing.T) {
+	const validValue = "v1"
+	const emptyValue = ""
+	const errorValue = "error"
 
-	_, err := LoadConfigFromEnv()
-	assertNoError(t, err, "all required set")
+	testCases := []struct {
+		name      string
+		envValue  string
+		expected  string
+		expectErr bool
+	}{
+		{
+			name:      "valid env string",
+			envValue:  validValue,
+			expected:  validValue,
+			expectErr: false,
+		},
+		{
+			name:      "empty env string",
+			envValue:  emptyValue,
+			expected:  errorValue,
+			expectErr: true,
+		},
+		{
+			name:      "env not set",
+			envValue:  notSet,
+			expected:  errorValue,
+			expectErr: true,
+		},
+	}
 
-	t.Setenv("JWT_SECRET", "")
-	_, err = LoadConfigFromEnv()
-	assertError(t, err, "JWT_SECRET unset")
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			setEnv(t, tc.envValue)
 
-	t.Setenv("JWT_SECRET", "jwt")
-	t.Setenv("GOOGLE_CLIENT_ID", "")
-	_, err = LoadConfigFromEnv()
-	assertError(t, err, "GOOGLE_CLIENT_ID unset")
+			got, err := getEnvStrOrError(testKey)
 
-	t.Setenv("GOOGLE_CLIENT_ID", "client")
-	t.Setenv("GOOGLE_CLIENT_SECRET", "")
-	_, err = LoadConfigFromEnv()
-	assertError(t, err, "GOOGLE_CLIENT_SECRET unset")
+			if tc.expectErr && err == nil {
+				t.Fatalf("expected error, got %q", got)
+			}
+
+			if !tc.expectErr && err != nil {
+				t.Fatalf("expected %q, got error %v", tc.expected, err)
+			}
+
+			if !tc.expectErr && got != tc.expected {
+				t.Fatalf("expected %q, got %q", tc.expected, got)
+			}
+		})
+	}
+}
+
+var mandatoryItems = []string{
+	"JWT_SECRET",
+	"GOOGLE_CLIENT_ID",
+	"GOOGLE_CLIENT_SECRET",
+}
+
+func setEnvForMandatoryItem(t *testing.T, keys []string) {
+	t.Helper()
+	
+	for _, key := range mandatoryItems {
+		t.Setenv(key, "")
+	}
+
+	for _, key := range keys {
+		t.Setenv(key, "test_value")
+	}
+}
+
+func TestLoadConfigFromEnv_MissingMandatory(t *testing.T) {
+	type testCase struct {
+		name      string
+		expectErr bool
+		keys      []string
+	}
+
+	testCases := []testCase{
+		{
+			name:      "normal case",
+			expectErr: false,
+			keys:      mandatoryItems,
+		},
+	}
+
+	for i, item := range mandatoryItems {
+		keys := make([]string, 0, len(mandatoryItems)-1)
+		keys = append(keys, mandatoryItems[:i]...)
+		keys = append(keys, mandatoryItems[i+1:]...)
+
+		tc := testCase{
+			name:      fmt.Sprintf("missing %s", item),
+			expectErr: true,
+			keys:      keys,
+		}
+		testCases = append(testCases, tc)
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			setEnvForMandatoryItem(t, tc.keys)
+			cfg, err := LoadConfigFromEnv()
+
+			if tc.expectErr && err == nil {
+				t.Fatalf("expected error, but got cfg: %v.", cfg)
+			}
+
+			if !tc.expectErr && cfg == nil {
+				t.Fatalf("expected cfg, but got nil")
+			}
+
+			if !tc.expectErr && err != nil {
+				t.Fatalf("expected cfg, but got err: %v", err)
+			}
+		})
+	}
 }
