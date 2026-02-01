@@ -31,7 +31,7 @@ func Auth(userService *service.UserService) gin.HandlerFunc {
 		}
 
 		err = userService.ValidateUserToken(c.Request.Context(), tokenString, userJwtPayload.UserID)
-		
+
 		var authError *authError.AuthError
 		if err != nil {
 			if errors.As(err, &authError) && authError.Status == 401 {

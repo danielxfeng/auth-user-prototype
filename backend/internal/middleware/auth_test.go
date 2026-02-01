@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 	"github.com/paularynty/transcendence/auth-service-go/internal/service"
@@ -28,6 +29,9 @@ func setupAuthDeps(t *testing.T) (*dependency.Dependency, *service.UserService) 
 	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{TranslateError: true})
 	if err != nil {
 		t.Fatalf("failed to connect to db: %v", err)
+	}
+	if err := db.AutoMigrate(&model.User{}, &model.Token{}); err != nil {
+		t.Fatalf("failed to migrate db: %v", err)
 	}
 	dep := testutil.NewTestDependency(cfg, db, nil, nil)
 	userService, err := service.NewUserService(dep)
@@ -74,6 +78,12 @@ func TestAuthMiddlewareAllowsValidToken(t *testing.T) {
 	token, err := jwt.SignUserToken(dep, 99)
 	if err != nil {
 		t.Fatalf("failed to sign user token: %v", err)
+	}
+	if err := dep.DB.Create(&model.User{Model: gorm.Model{ID: 99}, Username: "u99", Email: "u99@example.com"}).Error; err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+	if err := dep.DB.Create(&model.Token{UserID: 99, Token: token}).Error; err != nil {
+		t.Fatalf("failed to create token: %v", err)
 	}
 
 	r := gin.New()
