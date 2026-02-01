@@ -244,10 +244,12 @@ func (s *UserService) HandleGoogleOAuthCallback(ctx context.Context, code string
 		modelUser, err = gorm.G[model.User](s.Dep.DB).Where("email = ?", googleUserInfo.Email).First(ctx)
 		if err == nil { // User with this email exists, link Google account
 
+			// Autolinking is disabled and always returns 409 for now, as we cannot verify ownership of the email/password here.
 			err = s.linkGoogleAccountToExistingUser(ctx, &modelUser, googleUserInfo)
 			if err != nil { // Failed to link Google account
 				return HandleGoogleOAuthCallbackError(s.Dep, err, "failed to link google account to existing user")
 			}
+
 			// Successfully linked Google account
 			finalUserID = modelUser.ID
 		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
