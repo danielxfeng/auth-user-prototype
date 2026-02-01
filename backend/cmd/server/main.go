@@ -110,7 +110,6 @@ func main() {
 	// Swagger
 	r.GET("/api/docs/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
-
 	// http server
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", dep.Cfg.Port),
