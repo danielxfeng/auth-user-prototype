@@ -21,7 +21,7 @@ func UsersRouter(r *gin.RouterGroup, userService *service.UserService) {
 
 	// Authenticated endpoints
 	auth := r.Group("")
-	auth.Use(middleware.Auth(userService.Dep))
+	auth.Use(middleware.Auth(userService))
 
 	auth.GET("/me", h.GetLoggedUserProfileHandler)
 	auth.PUT("/password", middleware.ValidateBody[dto.UpdateUserPasswordRequest](), h.UpdateLoggedUserPasswordHandler)

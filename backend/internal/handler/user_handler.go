@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	authError "github.com/paularynty/transcendence/auth-service-go/internal/auth_error"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
-	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
 	"github.com/paularynty/transcendence/auth-service-go/internal/service"
 )
 
@@ -15,7 +15,7 @@ type UserHandler struct {
 }
 
 func handleError(c *gin.Context, err error) {
-	var authErr *middleware.AuthError
+	var authErr *authError.AuthError
 	if errors.As(err, &authErr) {
 		_ = c.AbortWithError(authErr.Status, err)
 	} else {
@@ -443,14 +443,14 @@ func (h *UserHandler) GoogleCallbackHandler(c *gin.Context) {
 	state := c.Query("state")
 
 	if code == "" || state == "" {
-		handleError(c, middleware.NewAuthError(400, "Missing code or state in callback"))
+		handleError(c, authError.NewAuthError(400, "Missing code or state in callback"))
 		return
 	}
 
 	url := h.Service.HandleGoogleOAuthCallback(c.Request.Context(), code, state)
 
 	if url == "" {
-		handleError(c, middleware.NewAuthError(500, "Failed to process Google OAuth callback"))
+		handleError(c, authError.NewAuthError(500, "Failed to process Google OAuth callback"))
 		return
 	}
 

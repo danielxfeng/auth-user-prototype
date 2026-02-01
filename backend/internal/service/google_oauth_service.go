@@ -14,7 +14,7 @@ import (
 	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
-	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
+	authError "github.com/paularynty/transcendence/auth-service-go/internal/auth_error"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
 	"gorm.io/gorm"
 )
@@ -109,18 +109,18 @@ var ExchangeCodeForTokens = func(dep *dependency.Dependency, ctx context.Context
 var FetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, error) {
 	sub := payload.Subject
 	if sub == "" {
-		return nil, middleware.NewAuthError(400, "google id token missing subject")
+		return nil, authError.NewAuthError(400, "google id token missing subject")
 	}
 
 	jsonClaims, err := json.Marshal(payload.Claims)
 	if err != nil {
-		return nil, middleware.NewAuthError(500, "failed to Marshal google jwt token")
+		return nil, authError.NewAuthError(500, "failed to Marshal google jwt token")
 	}
 
 	var claims dto.GoogleClaims
 	err = json.Unmarshal(jsonClaims, &claims)
 	if err != nil {
-		return nil, middleware.NewAuthError(500, "failed to Unmarshal google jwt token")
+		return nil, authError.NewAuthError(500, "failed to Unmarshal google jwt token")
 	}
 
 	googleUserInfo := &dto.GoogleUserData{
@@ -138,7 +138,7 @@ var FetchGoogleUserInfo = func(payload *idtoken.Payload) (*dto.GoogleUserData, e
 
 // This feature does not work unless we can verify the user's password/email ownership.
 func (s *UserService) linkGoogleAccountToExistingUser(ctx context.Context, modelUser *model.User, googleUserInfo *dto.GoogleUserData) error {
-	return middleware.NewAuthError(409, "same email exists")
+	return authError.NewAuthError(409, "same email exists")
 
 	/**
 
@@ -176,7 +176,7 @@ func (s *UserService) createNewUserFromGoogleInfo(ctx context.Context, googleUse
 	if isRetry {
 		uuidUsername, err := uuid.NewRandom()
 		if err != nil {
-			return nil, middleware.NewAuthError(500, "failed to generate UUID for Google user")
+			return nil, authError.NewAuthError(500, "failed to generate UUID for Google user")
 		}
 		username = "G_" + uuidUsername.String()
 	} else {
@@ -202,7 +202,7 @@ func (s *UserService) createNewUserFromGoogleInfo(ctx context.Context, googleUse
 			if !isRetry {
 				return s.createNewUserFromGoogleInfo(ctx, googleUserInfo, true)
 			}
-			return nil, middleware.NewAuthError(409, "username or email already in use")
+			return nil, authError.NewAuthError(409, "username or email already in use")
 		}
 		return nil, err
 	}

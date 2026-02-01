@@ -7,7 +7,7 @@ import (
 
 	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
-	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
+    authError "github.com/paularynty/transcendence/auth-service-go/internal/auth_error"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
 	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
@@ -18,17 +18,17 @@ func (s *UserService) StartTwoFaSetup(ctx context.Context, userID uint) (*dto.Tw
 	modelUser, err := gorm.G[model.User](s.Dep.DB).Where("id = ?", userID).First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, middleware.NewAuthError(404, "user not found")
+			return nil, authError.NewAuthError(404, "user not found")
 		}
 		return nil, err
 	}
 
 	if isTwoFAEnabled(modelUser.TwoFAToken) {
-		return nil, middleware.NewAuthError(400, "2FA is already enabled")
+		return nil, authError.NewAuthError(400, "2FA is already enabled")
 	}
 
 	if modelUser.GoogleOauthID != nil {
-		return nil, middleware.NewAuthError(400, "2FA cannot be enabled for Google OAuth users")
+		return nil, authError.NewAuthError(400, "2FA cannot be enabled for Google OAuth users")
 	}
 
 	secret, err := totp.Generate(totp.GenerateOpts{
@@ -61,37 +61,37 @@ func (s *UserService) StartTwoFaSetup(ctx context.Context, userID uint) (*dto.Tw
 func (s *UserService) ConfirmTwoFaSetup(ctx context.Context, userID uint, request *dto.TwoFAConfirmRequest) (*dto.UserWithTokenResponse, error) {
 	claims, err := jwt.ValidateTwoFASetupToken(s.Dep, request.SetupToken)
 	if err != nil || claims.Type != jwt.TwoFASetupType {
-		return nil, middleware.NewAuthError(400, "invalid setup token")
+		return nil, authError.NewAuthError(400, "invalid setup token")
 	}
 
 	if claims.UserID != userID {
-		return nil, middleware.NewAuthError(400, "setup token does not match user")
+		return nil, authError.NewAuthError(400, "setup token does not match user")
 	}
 
 	modelUser, err := gorm.G[model.User](s.Dep.DB).Where("id = ?", userID).First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, middleware.NewAuthError(404, "user not found")
+			return nil, authError.NewAuthError(404, "user not found")
 		}
 		return nil, err
 	}
 
 	if modelUser.TwoFAToken == nil {
-		return nil, middleware.NewAuthError(400, "2FA setup was not initiated")
+		return nil, authError.NewAuthError(400, "2FA setup was not initiated")
 	}
 
 	if isTwoFAEnabled(modelUser.TwoFAToken) {
-		return nil, middleware.NewAuthError(400, "2FA is already enabled")
+		return nil, authError.NewAuthError(400, "2FA is already enabled")
 	}
 
 	if modelUser.GoogleOauthID != nil {
-		return nil, middleware.NewAuthError(400, "2FA cannot be enabled for Google OAuth users")
+		return nil, authError.NewAuthError(400, "2FA cannot be enabled for Google OAuth users")
 	}
 
 	twoFaSecret := strings.TrimPrefix(*modelUser.TwoFAToken, TwoFAPrePrefix)
 	valid := totp.Validate(request.TwoFACode, twoFaSecret)
 	if !valid {
-		return nil, middleware.NewAuthError(400, "invalid 2FA code")
+		return nil, authError.NewAuthError(400, "invalid 2FA code")
 	}
 
 	_, err = gorm.G[model.User](s.Dep.DB).Where("id = ?", userID).Update(ctx, "two_fa_token", twoFaSecret)
@@ -112,23 +112,23 @@ func (s *UserService) DisableTwoFA(ctx context.Context, userID uint, request *dt
 	modelUser, err := gorm.G[model.User](s.Dep.DB).Where("id = ?", userID).First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, middleware.NewAuthError(404, "user not found")
+			return nil, authError.NewAuthError(404, "user not found")
 		}
 		return nil, err
 	}
 
 	if modelUser.PasswordHash == nil {
-		return nil, middleware.NewAuthError(400, "2FA cannot be disabled for OAuth users")
+		return nil, authError.NewAuthError(400, "2FA cannot be disabled for OAuth users")
 	}
 
 	if !isTwoFAEnabled(modelUser.TwoFAToken) {
-		return nil, middleware.NewAuthError(400, "2FA is not enabled")
+		return nil, authError.NewAuthError(400, "2FA is not enabled")
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(*modelUser.PasswordHash), []byte(request.Password.Password))
 	if err != nil {
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			return nil, middleware.NewAuthError(401, "invalid credentials")
+			return nil, authError.NewAuthError(401, "invalid credentials")
 		}
 		return nil, err
 	}
@@ -150,24 +150,24 @@ func (s *UserService) DisableTwoFA(ctx context.Context, userID uint, request *dt
 func (s *UserService) SubmitTwoFAChallenge(ctx context.Context, request *dto.TwoFAChallengeRequest) (*dto.UserWithTokenResponse, error) {
 	claims, err := jwt.ValidateTwoFAToken(s.Dep, request.SessionToken)
 	if err != nil || claims.Type != jwt.TwoFATokenType {
-		return nil, middleware.NewAuthError(400, "invalid session token")
+		return nil, authError.NewAuthError(400, "invalid session token")
 	}
 
 	modelUser, err := gorm.G[model.User](s.Dep.DB).Where("id = ?", claims.UserID).First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, middleware.NewAuthError(404, "user not found")
+			return nil, authError.NewAuthError(404, "user not found")
 		}
 		return nil, err
 	}
 
 	if !isTwoFAEnabled(modelUser.TwoFAToken) || modelUser.TwoFAToken == nil {
-		return nil, middleware.NewAuthError(400, "2FA is not enabled for this user")
+		return nil, authError.NewAuthError(400, "2FA is not enabled for this user")
 	}
 
 	valid := totp.Validate(request.TwoFACode, *modelUser.TwoFAToken)
 	if !valid {
-		return nil, middleware.NewAuthError(400, "invalid 2FA code")
+		return nil, authError.NewAuthError(400, "invalid 2FA code")
 	}
 
 	userToken, err := s.issueNewTokenForUser(ctx, modelUser.ID, false)

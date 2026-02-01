@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	authError "github.com/paularynty/transcendence/auth-service-go/internal/auth_error"
 )
 
 type RateLimiter struct {
@@ -55,7 +57,7 @@ func (rl *RateLimiter) RateLimit() gin.HandlerFunc {
 		clientID := c.ClientIP()
 
 		if !rl.AllowRequest(clientID) {
-			_ = c.AbortWithError(429, NewAuthError(429, "Too many requests"))
+			_ = c.AbortWithError(429, authError.NewAuthError(429, "Too many requests"))
 			return
 		}
 
