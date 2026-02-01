@@ -18,19 +18,19 @@ import (
 
 const HeartBeatPrefix = "heartbeat:"
 
-func NewUserService(dep *dependency.Dependency) *UserService {
+func NewUserService(dep *dependency.Dependency) (*UserService, error) {
 
 	if dep.DB == nil {
-		panic("UserService: db is nil")
+		return nil, fmt.Errorf("UserService: db is nil")
 	}
 
 	if dep.Cfg.IsRedisEnabled && dep.Redis == nil {
-		panic("UserService: redis is enabled but redis client is nil")
+		return nil, fmt.Errorf("UserService: redis is enabled but redis client is nil")
 	}
 
 	return &UserService{
 		Dep: dep,
-	}
+	}, nil
 }
 
 func isTwoFAEnabled(twoFAToken *string) bool {

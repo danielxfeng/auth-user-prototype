@@ -18,3 +18,11 @@ func GetLogger(level slog.Leveler) *slog.Logger {
 	slog.SetDefault(logger)
 	return logger
 }
+
+// LogFatalErr logs the error message and exits the program if err is not nil.
+func LogFatalErr(logger *slog.Logger, err error, msg string) {
+	if err != nil {
+		logger.Error(msg, "err", err)
+		os.Exit(1)
+	}
+}

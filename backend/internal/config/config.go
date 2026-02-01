@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 )
@@ -33,14 +34,14 @@ func getEnvStrOrDefault(key string, defaultValue string) string {
 	return value
 }
 
-func getEnvStrOrPanic(key string) string {
+func getEnvStrOrError(key string) (string, error) {
 	value := os.Getenv(key)
 
 	if value == "" {
-		panic("environment variable " + key + " is required but not set")
+		return "", fmt.Errorf("environment variable %s is required but not set", key)
 	}
 
-	return value
+	return value, nil
 }
 
 func getEnvIntOrDefault(key string, defaultValue int) int {
@@ -54,15 +55,30 @@ func getEnvIntOrDefault(key string, defaultValue int) int {
 	return intValue
 }
 
-func LoadConfigFromEnv() *Config {
+func LoadConfigFromEnv() (*Config, error) {
+	jwtSecret, err := getEnvStrOrError("JWT_SECRET")
+	if err != nil {
+		return nil, err
+	}
+
+	GoogleClientId, err := getEnvStrOrError("GOOGLE_CLIENT_ID")
+	if err != nil {
+		return nil, err
+	}
+
+	GoogleClientSecret, err := getEnvStrOrError("GOOGLE_CLIENT_SECRET")
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		GinMode:                 getEnvStrOrDefault("GIN_MODE", "debug"),
 		DbAddress:               getEnvStrOrDefault("DB_ADDRESS", "data/auth_service_db.sqlite"),
-		JwtSecret:               getEnvStrOrPanic("JWT_SECRET"),
+		JwtSecret:               jwtSecret,
 		UserTokenExpiry:         getEnvIntOrDefault("USER_TOKEN_EXPIRY", 3600),
 		OauthStateTokenExpiry:   getEnvIntOrDefault("OAUTH_STATE_TOKEN_EXPIRY", 600),
-		GoogleClientId:          getEnvStrOrPanic("GOOGLE_CLIENT_ID"),
-		GoogleClientSecret:      getEnvStrOrPanic("GOOGLE_CLIENT_SECRET"),
+		GoogleClientId:          GoogleClientId,
+		GoogleClientSecret:      GoogleClientSecret,
 		GoogleRedirectUri:       getEnvStrOrDefault("GOOGLE_REDIRECT_URI", "test-google-redirect-uri"),
 		FrontendUrl:             getEnvStrOrDefault("FRONTEND_URL", "http://localhost:5173"),
 		TwoFaUrlPrefix:          getEnvStrOrDefault("TWO_FA_URL_PREFIX", "otpauth://totp/Transcendence?secret="),
@@ -71,5 +87,5 @@ func LoadConfigFromEnv() *Config {
 		IsRedisEnabled:          getEnvStrOrDefault("REDIS_URL", "") != "",
 		UserTokenAbsoluteExpiry: getEnvIntOrDefault("USER_TOKEN_ABSOLUTE_EXPIRY", 2592000),
 		Port:                    getEnvIntOrDefault("PORT", 3003),
-	}
+	}, nil
 }

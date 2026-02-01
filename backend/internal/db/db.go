@@ -2,18 +2,19 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-func GetDB(dbName string, logger *slog.Logger) *gorm.DB {
+func GetDB(dbName string, logger *slog.Logger) (*gorm.DB, error) {
 	var err error
 	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{TranslateError: true})
 
 	if err != nil {
-		panic("failed to connect to db: " + dbName)
+		return nil, fmt.Errorf("failed to connect to db: %w", err)
 	}
 
 	db.Exec("PRAGMA foreign_keys = ON")
@@ -25,13 +26,13 @@ func GetDB(dbName string, logger *slog.Logger) *gorm.DB {
 		&HeartBeat{},
 	} {
 		if err := db.AutoMigrate(model); err != nil {
-			panic("failed to migrate model: " + err.Error())
+			return nil, fmt.Errorf("failed to migrate model: %w", err)
 		}
 	}
 
 	logger.Info("connected to db")
 
-	return db
+	return db, nil
 }
 
 func CloseDB(db *gorm.DB, logger *slog.Logger) {
