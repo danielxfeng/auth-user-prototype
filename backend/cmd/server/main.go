@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -105,7 +106,7 @@ func main() {
 	// Swagger
 	r.GET("/api/docs/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
-	if err := r.Run(":3003"); err != nil {
+	if err := r.Run(fmt.Sprintf(":%d", dep.Cfg.Port)); err != nil {
 		dep.Logger.Error("failed to start server", "err", err)
 		os.Exit(1)
 	}

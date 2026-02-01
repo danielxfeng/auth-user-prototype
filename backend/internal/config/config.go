@@ -20,6 +20,7 @@ type Config struct {
 	RedisURL                string
 	IsRedisEnabled          bool
 	UserTokenAbsoluteExpiry int
+	Port                    int
 }
 
 func getEnvStrOrDefault(key string, defaultValue string) string {
@@ -69,5 +70,6 @@ func LoadConfigFromEnv() *Config {
 		RedisURL:                getEnvStrOrDefault("REDIS_URL", ""),
 		IsRedisEnabled:          getEnvStrOrDefault("REDIS_URL", "") != "",
 		UserTokenAbsoluteExpiry: getEnvIntOrDefault("USER_TOKEN_ABSOLUTE_EXPIRY", 2592000),
+		Port:                    getEnvIntOrDefault("PORT", 3003),
 	}
 }
