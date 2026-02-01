@@ -4,6 +4,7 @@ import (
 	"io"
 	"log/slog"
 
+	"github.com/gin-gonic/gin"
 	"github.com/paularynty/transcendence/auth-service-go/internal/config"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/redis/go-redis/v9"
@@ -47,4 +48,24 @@ func NewTestDependency(cfg *config.Config, db *gorm.DB, redis *redis.Client, log
 		}
 	}
 	return dependency.NewDependency(cfg, db, redis, logger)
+}
+
+func NewMiddlewareTestRouter(middleware1 gin.HandlerFunc, middleware2 gin.HandlerFunc) *gin.Engine {
+	r := gin.New()
+
+	if middleware1 != nil {
+		r.Use(middleware1)
+	}
+
+	if middleware2 != nil {
+		r.Use(middleware2)
+	}
+
+	r.POST("/middleware-test", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "ok",
+		})
+	})
+	
+	return r
 }
