@@ -156,7 +156,7 @@ var mandatoryItems = []string{
 
 func setEnvForMandatoryItem(t *testing.T, keys []string) {
 	t.Helper()
-	
+
 	for _, key := range mandatoryItems {
 		t.Setenv(key, "")
 	}

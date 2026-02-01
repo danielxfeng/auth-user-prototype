@@ -29,6 +29,7 @@ func InitValidator() {
 	_ = Validate.RegisterValidation("username", validateUsername)
 	_ = Validate.RegisterValidation("password", validatePassword)
 	_ = Validate.RegisterValidation("identifier", validateIdentifier)
+	Validate.RegisterAlias("passwordField", "required,trim,min=6,max=20,password")
 	registerUsernameTranslation(Validate, Trans)
 	registerPasswordTranslation(Validate, Trans)
 	registerIdentifierTranslation(Validate, Trans)
@@ -80,15 +81,15 @@ func registerUsernameTranslation(v *validator.Validate, trans ut.Translator) {
 // Password
 
 type Password struct {
-	Password string `json:"password" validate:"required,trim,min=6,max=20,password"`
+	Password string `json:"password" validate:"passwordField"`
 }
 
 type OldPassword struct {
-	OldPassword string `json:"oldPassword" validate:"required,trim,password,min=6,max=20"`
+	OldPassword string `json:"oldPassword" validate:"passwordField"`
 }
 
 type NewPassword struct {
-	NewPassword string `json:"newPassword" validate:"required,trim,password,min=6,max=20"`
+	NewPassword string `json:"newPassword" validate:"passwordField"`
 }
 
 // Contains only letters, numbers, ".", "_" or "-"
