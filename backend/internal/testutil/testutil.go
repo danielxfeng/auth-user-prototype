@@ -70,8 +70,12 @@ func NewMiddlewareTestRouter(middleware1 gin.HandlerFunc, middleware2 gin.Handle
 	}
 
 	r.POST("/middleware-test", func(c *gin.Context) {
+		userID := c.GetUint("userID")
+		token := c.GetString("token")
+
 		c.JSON(200, gin.H{
-			"message": "ok",
+			"userID": userID,
+			"token":  token,
 		})
 	})
 

@@ -2,6 +2,7 @@ package middleware_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -40,9 +41,15 @@ func newTestAuthService(returnCode int) middleware.AuthService {
 }
 
 const notSet = "notSet"
+const userID = 11
+
+var resp struct {
+	UserID uint   `json:"userID"`
+	Token  string `json:"token"`
+}
 
 func TestAuth(t *testing.T) {
-	validToken, err := jwt.SignUserToken(testDep, 1)
+	validToken, err := jwt.SignUserToken(testDep, userID)
 	if err != nil {
 		t.Fatalf("failed to sign test token, err: %v", err)
 	}
@@ -71,6 +78,20 @@ func TestAuth(t *testing.T) {
 
 			if w.Code != tc.expectedStatus {
 				t.Fatalf("expected: %d, got: %d", tc.expectedStatus, w.Code)
+			}
+
+			if w.Code == 200 {
+				if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+					t.Fatalf("failed to unmarshal response: %v", err)
+				}
+
+				if resp.Token != validToken {
+					t.Fatalf("token does not set to request")
+				}
+
+				if resp.UserID != userID {
+					t.Fatalf("userID does not set to request, expected: %d, got: %d", userID, resp.UserID)
+				}
 			}
 		})
 	}
