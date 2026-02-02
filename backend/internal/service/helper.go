@@ -8,7 +8,6 @@ import (
 	"time"
 
 	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
-	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
 	"github.com/redis/go-redis/v9"
@@ -17,21 +16,6 @@ import (
 )
 
 const HeartBeatPrefix = "heartbeat:"
-
-func NewUserService(dep *dependency.Dependency) (*UserService, error) {
-
-	if dep.DB == nil {
-		return nil, fmt.Errorf("UserService: db is nil")
-	}
-
-	if dep.Cfg.IsRedisEnabled && dep.Redis == nil {
-		return nil, fmt.Errorf("UserService: redis is enabled but redis client is nil")
-	}
-
-	return &UserService{
-		Dep: dep,
-	}, nil
-}
 
 func isTwoFAEnabled(twoFAToken *string) bool {
 	return twoFAToken != nil && *twoFAToken != "" && !strings.HasPrefix(*twoFAToken, TwoFAPrePrefix)
