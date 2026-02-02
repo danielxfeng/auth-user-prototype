@@ -10,142 +10,125 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
+	"github.com/paularynty/transcendence/auth-service-go/internal/testutil"
 )
 
-func TestAllowRequestResetsAfterWindow(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+const rateLimiterPath = "/middleware-test"
 
-	rl := middleware.NewRateLimiter(30*time.Millisecond, 2, time.Minute)
-	clientID := "client-1"
+func newRateLimiterRouter(rl *middleware.RateLimiter) *gin.Engine {
+	r := testutil.NewIntegrationTestRouter(nil, middleware.ErrorHandler(), rl.RateLimit())
 
-	if !rl.AllowRequest(clientID) {
-		t.Fatalf("expected first request to pass")
-	}
-	if !rl.AllowRequest(clientID) {
-		t.Fatalf("expected second request to pass within window")
-	}
-	if rl.AllowRequest(clientID) {
-		t.Fatalf("expected third request to be blocked within window")
-	}
-
-	time.Sleep(40 * time.Millisecond)
-
-	if !rl.AllowRequest(clientID) {
-		t.Fatalf("expected requests to be allowed after window resets")
-	}
-}
-
-func TestRateLimitMiddlewareBlocksAfterLimit(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	rl := middleware.NewRateLimiter(50*time.Millisecond, 1, time.Minute)
-
-	r := gin.New()
-	r.Use(middleware.ErrorHandler())
-	r.Use(rl.RateLimit())
-	r.GET("/limited", func(c *gin.Context) {
+	r.POST(rateLimiterPath, func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	})
+	r.OPTIONS(rateLimiterPath, func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
 
-	req1 := httptest.NewRequest(http.MethodGet, "/limited", nil)
-	req1.RemoteAddr = "198.51.100.10:1234"
-	resp1 := httptest.NewRecorder()
-	r.ServeHTTP(resp1, req1)
-	if resp1.Code != http.StatusOK {
-		t.Fatalf("expected first request status 200, got %d", resp1.Code)
-	}
+	return r
+}
 
-	req2 := httptest.NewRequest(http.MethodGet, "/limited", nil)
-	req2.RemoteAddr = "198.51.100.10:5678"
-	resp2 := httptest.NewRecorder()
-	r.ServeHTTP(resp2, req2)
+func doRequest(r http.Handler, method string, ip string) *httptest.ResponseRecorder {
+	req, _ := http.NewRequest(method, rateLimiterPath, nil)
+	req.RemoteAddr = ip
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	return w
+}
 
-	if resp2.Code != http.StatusTooManyRequests {
-		t.Fatalf("expected status 429, got %d body=%s", resp2.Code, resp2.Body.String())
-	}
+func assertErrorMessage(t *testing.T, w *httptest.ResponseRecorder, expected string) {
+	t.Helper()
 
 	var body map[string]string
-	if err := json.Unmarshal(resp2.Body.Bytes(), &body); err != nil {
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	if body["error"] != "Too many requests" {
+	if body["error"] != expected {
 		t.Fatalf("unexpected error payload: %v", body)
 	}
 }
 
-func TestRateLimitMiddlewareSkipsOptions(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+func TestRateLimiterBlocksAfterLimit(t *testing.T) {
+	rl := middleware.NewRateLimiter(100*time.Millisecond, 2, time.Minute)
+	r := newRateLimiterRouter(rl)
 
-	rl := middleware.NewRateLimiter(50*time.Millisecond, 1, time.Minute)
-
-	r := gin.New()
-	r.Use(middleware.ErrorHandler())
-	r.Use(rl.RateLimit())
-	r.OPTIONS("/limited", func(c *gin.Context) {
-		c.Status(http.StatusNoContent)
-	})
-	r.GET("/limited", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"ok": true})
-	})
-
-	reqOptions := httptest.NewRequest(http.MethodOptions, "/limited", nil)
-	reqOptions.RemoteAddr = "198.51.100.20:9999"
-	for i := 0; i < 3; i++ {
-		resp := httptest.NewRecorder()
-		r.ServeHTTP(resp, reqOptions)
-		if resp.Code != http.StatusNoContent {
-			t.Fatalf("expected OPTIONS to bypass limiter with 204, got %d", resp.Code)
-		}
+	resp1 := doRequest(r, http.MethodPost, "203.0.113.1:1000")
+	if resp1.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, resp1.Code)
 	}
 
-	reqGet := httptest.NewRequest(http.MethodGet, "/limited", nil)
-	reqGet.RemoteAddr = "198.51.100.20:9999"
-	respGet1 := httptest.NewRecorder()
-	r.ServeHTTP(respGet1, reqGet)
-	if respGet1.Code != http.StatusOK {
-		t.Fatalf("expected first GET 200 after OPTIONS calls, got %d", respGet1.Code)
+	resp2 := doRequest(r, http.MethodPost, "203.0.113.1:1000")
+	if resp2.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, resp2.Code)
 	}
 
-	respGet2 := httptest.NewRecorder()
-	r.ServeHTTP(respGet2, reqGet)
-	if respGet2.Code != http.StatusTooManyRequests {
-		t.Fatalf("expected second GET to be rate limited with 429, got %d", respGet2.Code)
+	blocked := doRequest(r, http.MethodPost, "203.0.113.1:1000")
+	if blocked.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected status %d, got %d", http.StatusTooManyRequests, blocked.Code)
+	}
+	assertErrorMessage(t, blocked, "Too many requests")
+}
+
+func TestRateLimiterResetsAfterWindow(t *testing.T) {
+	rl := middleware.NewRateLimiter(30*time.Millisecond, 1, time.Minute)
+	r := newRateLimiterRouter(rl)
+
+	resp1 := doRequest(r, http.MethodPost, "198.51.100.3:9999")
+	if resp1.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, resp1.Code)
+	}
+
+	resp2 := doRequest(r, http.MethodPost, "198.51.100.3:9999")
+	if resp2.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected status %d, got %d", http.StatusTooManyRequests, resp2.Code)
+	}
+
+	time.Sleep(60 * time.Millisecond)
+
+	resp3 := doRequest(r, http.MethodPost, "198.51.100.3:9999")
+	if resp3.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, resp3.Code)
 	}
 }
 
-func TestRateLimitMiddlewareUsesClientSpecificCounters(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
+func TestRateLimiterOptionsBypass(t *testing.T) {
 	rl := middleware.NewRateLimiter(100*time.Millisecond, 1, time.Minute)
+	r := newRateLimiterRouter(rl)
 
-	r := gin.New()
-	r.Use(middleware.ErrorHandler())
-	r.Use(rl.RateLimit())
-	r.GET("/limited", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"ok": true})
-	})
-
-	reqClientA := httptest.NewRequest(http.MethodGet, "/limited", nil)
-	reqClientA.RemoteAddr = "203.0.113.1:5000"
-	respA1 := httptest.NewRecorder()
-	r.ServeHTTP(respA1, reqClientA)
-	if respA1.Code != http.StatusOK {
-		t.Fatalf("expected client A first request 200, got %d", respA1.Code)
+	for i := 0; i < 3; i++ {
+		resp := doRequest(r, http.MethodOptions, "203.0.113.2:5555")
+		if resp.Code != http.StatusNoContent {
+			t.Fatalf("expected status %d, got %d", http.StatusNoContent, resp.Code)
+		}
 	}
 
-	reqClientB := httptest.NewRequest(http.MethodGet, "/limited", nil)
-	reqClientB.RemoteAddr = "203.0.113.2:5000"
-	respB := httptest.NewRecorder()
-	r.ServeHTTP(respB, reqClientB)
-	if respB.Code != http.StatusOK {
-		t.Fatalf("expected client B request 200, got %d body=%s", respB.Code, respB.Body.String())
+	resp1 := doRequest(r, http.MethodPost, "203.0.113.2:5555")
+	if resp1.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, resp1.Code)
 	}
 
-	reqClientA2 := httptest.NewRequest(http.MethodGet, "/limited", nil)
-	reqClientA2.RemoteAddr = "203.0.113.1:6000"
-	respA2 := httptest.NewRecorder()
-	r.ServeHTTP(respA2, reqClientA2)
-	if respA2.Code != http.StatusTooManyRequests {
-		t.Fatalf("expected client A second request 429, got %d", respA2.Code)
+	resp2 := doRequest(r, http.MethodPost, "203.0.113.2:5555")
+	if resp2.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected status %d, got %d", http.StatusTooManyRequests, resp2.Code)
+	}
+}
+
+func TestRateLimiterClientIsolation(t *testing.T) {
+	rl := middleware.NewRateLimiter(100*time.Millisecond, 1, time.Minute)
+	r := newRateLimiterRouter(rl)
+
+	resp1 := doRequest(r, http.MethodPost, "203.0.113.10:5000")
+	if resp1.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, resp1.Code)
+	}
+
+	resp2 := doRequest(r, http.MethodPost, "203.0.113.11:5000")
+	if resp2.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, resp2.Code)
+	}
+
+	resp3 := doRequest(r, http.MethodPost, "203.0.113.10:6000")
+	if resp3.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected status %d, got %d", http.StatusTooManyRequests, resp3.Code)
 	}
 }
