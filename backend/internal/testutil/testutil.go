@@ -74,7 +74,7 @@ func NewMiddlewareTestRouter(middleware1 gin.HandlerFunc, middleware2 gin.Handle
 			"message": "ok",
 		})
 	})
-	
+
 	return r
 }
 
@@ -87,4 +87,3 @@ func NewIntegrationTestRouter(dep *dependency.Dependency, handlers ...gin.Handle
 
 	return r
 }
-

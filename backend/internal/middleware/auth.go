@@ -30,12 +30,14 @@ func Auth(authService AuthService) gin.HandlerFunc {
 
 		tokenString := authHeader[len(PrefixBearer):]
 
+		// JWT validation
 		userJwtPayload, err := jwt.ValidateUserTokenGeneric(authService.GetDependency(), tokenString)
 		if err != nil {
 			_ = c.AbortWithError(401, authError.NewAuthError(401, "Invalid or expired token"))
 			return
 		}
 
+		// Online validation
 		err = authService.ValidateUserToken(c.Request.Context(), tokenString, userJwtPayload.UserID)
 
 		var authError *authError.AuthError
