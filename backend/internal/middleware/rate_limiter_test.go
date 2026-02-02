@@ -1,7 +1,6 @@
 package middleware_test
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,122 +12,134 @@ import (
 	"github.com/paularynty/transcendence/auth-service-go/internal/testutil"
 )
 
-const rateLimiterPath = "/middleware-test"
-
-func newRateLimiterRouter(rl *middleware.RateLimiter) *gin.Engine {
-	r := testutil.NewIntegrationTestRouter(nil, middleware.ErrorHandler(), rl.RateLimit())
-
-	r.POST(rateLimiterPath, func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"ok": true})
-	})
-	r.OPTIONS(rateLimiterPath, func(c *gin.Context) {
-		c.Status(http.StatusNoContent)
-	})
-
-	return r
-}
-
-func doRequest(r http.Handler, method string, ip string) *httptest.ResponseRecorder {
-	req, _ := http.NewRequest(method, rateLimiterPath, nil)
-	req.RemoteAddr = ip
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	return w
-}
-
-func assertErrorMessage(t *testing.T, w *httptest.ResponseRecorder, expected string) {
-	t.Helper()
-
-	var body map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
-	if body["error"] != expected {
-		t.Fatalf("unexpected error payload: %v", body)
-	}
-}
-
-func TestRateLimiterBlocksAfterLimit(t *testing.T) {
-	rl := middleware.NewRateLimiter(100*time.Millisecond, 2, time.Minute)
-	r := newRateLimiterRouter(rl)
-
-	resp1 := doRequest(r, http.MethodPost, "203.0.113.1:1000")
-	if resp1.Code != http.StatusOK {
-		t.Fatalf("expected status %d, got %d", http.StatusOK, resp1.Code)
-	}
-
-	resp2 := doRequest(r, http.MethodPost, "203.0.113.1:1000")
-	if resp2.Code != http.StatusOK {
-		t.Fatalf("expected status %d, got %d", http.StatusOK, resp2.Code)
+func TestRateLimiter(t *testing.T) {
+	testCases := []struct {
+		name           string
+		duration       time.Duration
+		limit          int
+		sleep          time.Duration
+		methods        []string
+		remoteAddrs    []string
+		expectedStatus []int
+		needOptions    bool
+	}{
+		{
+			name:           "blocks after limit",
+			duration:       100 * time.Millisecond,
+			limit:          2,
+			methods:        []string{http.MethodPost, http.MethodPost, http.MethodPost},
+			remoteAddrs:    []string{"203.0.113.1:1000", "203.0.113.1:1000", "203.0.113.1:1000"},
+			expectedStatus: []int{200, 200, 429},
+		},
+		{
+			name:           "resets after window",
+			duration:       30 * time.Millisecond,
+			limit:          1,
+			sleep:          60 * time.Millisecond,
+			methods:        []string{http.MethodPost, http.MethodPost, http.MethodPost},
+			remoteAddrs:    []string{"198.51.100.3:9999", "198.51.100.3:9999", "198.51.100.3:9999"},
+			expectedStatus: []int{200, 429, 200},
+		},
+		{
+			name:           "options bypass",
+			duration:       100 * time.Millisecond,
+			limit:          1,
+			methods:        []string{http.MethodOptions, http.MethodOptions, http.MethodOptions, http.MethodPost, http.MethodPost},
+			remoteAddrs:    []string{"203.0.113.2:5555", "203.0.113.2:5555", "203.0.113.2:5555", "203.0.113.2:5555", "203.0.113.2:5555"},
+			expectedStatus: []int{204, 204, 204, 200, 429},
+			needOptions:    true,
+		},
+		{
+			name:           "client isolation",
+			duration:       100 * time.Millisecond,
+			limit:          1,
+			methods:        []string{http.MethodPost, http.MethodPost, http.MethodPost},
+			remoteAddrs:    []string{"203.0.113.10:5000", "203.0.113.11:5000", "203.0.113.10:6000"},
+			expectedStatus: []int{200, 200, 429},
+		},
 	}
 
-	blocked := doRequest(r, http.MethodPost, "203.0.113.1:1000")
-	if blocked.Code != http.StatusTooManyRequests {
-		t.Fatalf("expected status %d, got %d", http.StatusTooManyRequests, blocked.Code)
-	}
-	assertErrorMessage(t, blocked, "Too many requests")
-}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rl := middleware.NewRateLimiter(tc.duration, tc.limit, time.Minute)
+			r := testutil.NewMiddlewareTestRouter(rl.RateLimit(), middleware.ErrorHandler())
+			if tc.needOptions {
+				r.OPTIONS("/middleware-test", func(c *gin.Context) {
+					c.Status(204)
+				})
+			}
 
-func TestRateLimiterResetsAfterWindow(t *testing.T) {
-	rl := middleware.NewRateLimiter(30*time.Millisecond, 1, time.Minute)
-	r := newRateLimiterRouter(rl)
+			for i := 0; i < len(tc.methods); i++ {
+				req, _ := http.NewRequest(tc.methods[i], "/middleware-test", nil)
+				req.RemoteAddr = tc.remoteAddrs[i]
 
-	resp1 := doRequest(r, http.MethodPost, "198.51.100.3:9999")
-	if resp1.Code != http.StatusOK {
-		t.Fatalf("expected status %d, got %d", http.StatusOK, resp1.Code)
-	}
+				w := httptest.NewRecorder()
+				r.ServeHTTP(w, req)
 
-	resp2 := doRequest(r, http.MethodPost, "198.51.100.3:9999")
-	if resp2.Code != http.StatusTooManyRequests {
-		t.Fatalf("expected status %d, got %d", http.StatusTooManyRequests, resp2.Code)
-	}
+				if w.Code != tc.expectedStatus[i] {
+					t.Fatalf("expected: %d, got: %d", tc.expectedStatus[i], w.Code)
+				}
 
-	time.Sleep(60 * time.Millisecond)
-
-	resp3 := doRequest(r, http.MethodPost, "198.51.100.3:9999")
-	if resp3.Code != http.StatusOK {
-		t.Fatalf("expected status %d, got %d", http.StatusOK, resp3.Code)
+				if tc.sleep > 0 && i == 1 {
+					time.Sleep(tc.sleep)
+				}
+			}
+		})
 	}
 }
 
-func TestRateLimiterOptionsBypass(t *testing.T) {
-	rl := middleware.NewRateLimiter(100*time.Millisecond, 1, time.Minute)
-	r := newRateLimiterRouter(rl)
-
-	for i := 0; i < 3; i++ {
-		resp := doRequest(r, http.MethodOptions, "203.0.113.2:5555")
-		if resp.Code != http.StatusNoContent {
-			t.Fatalf("expected status %d, got %d", http.StatusNoContent, resp.Code)
-		}
+func TestAllowRequest(t *testing.T) {
+	type step struct {
+		sleep  time.Duration
+		client string
+		expect bool
 	}
 
-	resp1 := doRequest(r, http.MethodPost, "203.0.113.2:5555")
-	if resp1.Code != http.StatusOK {
-		t.Fatalf("expected status %d, got %d", http.StatusOK, resp1.Code)
+	testCases := []struct {
+		name     string
+		duration time.Duration
+		limit    int
+		cleanup  time.Duration
+		steps    []step
+	}{
+		{
+			name:     "limit reached",
+			duration: 50 * time.Millisecond,
+			limit:    1,
+			cleanup:  time.Minute,
+			steps: []step{
+				{client: "client-a", expect: true},
+				{client: "client-a", expect: false},
+			},
+		},
+		{
+			name:     "cleanup path",
+			duration: 50 * time.Millisecond,
+			limit:    1,
+			cleanup:  1 * time.Millisecond,
+			steps: []step{
+				{client: "client-a", expect: true},
+				{sleep: 2 * time.Millisecond},
+				{client: "client-b", expect: true},
+			},
+		},
 	}
 
-	resp2 := doRequest(r, http.MethodPost, "203.0.113.2:5555")
-	if resp2.Code != http.StatusTooManyRequests {
-		t.Fatalf("expected status %d, got %d", http.StatusTooManyRequests, resp2.Code)
-	}
-}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rl := middleware.NewRateLimiter(tc.duration, tc.limit, tc.cleanup)
 
-func TestRateLimiterClientIsolation(t *testing.T) {
-	rl := middleware.NewRateLimiter(100*time.Millisecond, 1, time.Minute)
-	r := newRateLimiterRouter(rl)
+			for _, s := range tc.steps {
+				if s.sleep > 0 {
+					time.Sleep(s.sleep)
+					continue
+				}
 
-	resp1 := doRequest(r, http.MethodPost, "203.0.113.10:5000")
-	if resp1.Code != http.StatusOK {
-		t.Fatalf("expected status %d, got %d", http.StatusOK, resp1.Code)
-	}
-
-	resp2 := doRequest(r, http.MethodPost, "203.0.113.11:5000")
-	if resp2.Code != http.StatusOK {
-		t.Fatalf("expected status %d, got %d", http.StatusOK, resp2.Code)
-	}
-
-	resp3 := doRequest(r, http.MethodPost, "203.0.113.10:6000")
-	if resp3.Code != http.StatusTooManyRequests {
-		t.Fatalf("expected status %d, got %d", http.StatusTooManyRequests, resp3.Code)
+				allowed := rl.AllowRequest(s.client)
+				if allowed != s.expect {
+					t.Fatalf("expected: %v, got: %v", s.expect, allowed)
+				}
+			}
+		})
 	}
 }
