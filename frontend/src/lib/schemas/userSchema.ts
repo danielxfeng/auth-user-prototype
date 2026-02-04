@@ -15,7 +15,7 @@ const usernameSchema = z
 		message: 'Username may only contain letters, numbers, ".", "_" or "-"'
 	});
 
-const passwordSchema = z.string().trim().min(3).max(20).refine(isAlphaNumericLegalSymbols, {
+const passwordSchema = z.string().trim().min(6).max(20).refine(isAlphaNumericLegalSymbols, {
 	error: 'Password may only contain letters, numbers, and the following symbols: ,.#$%@^;|_!*&?'
 });
 
