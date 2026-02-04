@@ -44,11 +44,22 @@ func testRouterFactory(t *testing.T, testCfg *config.Config, setDBDown bool) *gi
 	var redisClient *redis.Client
 
 	if testCfg.IsRedisEnabled {
-		mr := miniredis.RunT(t)
-		redisClient, err = db.GetRedis("redis://"+mr.Addr(), testCfg, testLogger)
+		mr, err := miniredis.Run()
+		if err != nil {
+			t.Fatalf("failed to start miniredis, err: %v", err)
+		}
+		t.Cleanup(func() {
+			mr.Close()
+		})
+
+		testCfg.RedisURL = "redis://" + mr.Addr()
+		redisClient, err = db.GetRedis(testCfg.RedisURL, testCfg, testLogger)
 		if err != nil {
 			t.Fatalf("failed to init the test redis, err: %v", err)
 		}
+		t.Cleanup(func() {
+			db.CloseRedis(redisClient, testLogger)
+		})
 	}
 
 	dep := testutil.NewTestDependency(testCfg, myDB, redisClient, testLogger)
