@@ -148,4 +148,3 @@ func TestTwoFAToken(t *testing.T) {
 		t.Fatalf("expected error, got nil")
 	}
 }
-

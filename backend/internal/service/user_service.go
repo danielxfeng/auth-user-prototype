@@ -191,7 +191,11 @@ func (s *UserService) UpdateUserProfile(ctx context.Context, userID uint, reques
 	}
 
 	modelUser.Username = request.Username
-	modelUser.Avatar = request.Avatar
+	if request.Avatar != nil && strings.TrimSpace(*request.Avatar) == "" {
+		modelUser.Avatar = nil
+	} else {
+		modelUser.Avatar = request.Avatar
+	}
 	modelUser.Email = request.Email
 
 	err = s.Dep.DB.WithContext(ctx).Save(&modelUser).Error

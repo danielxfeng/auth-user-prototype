@@ -20,7 +20,7 @@ func NewTestLogger() *slog.Logger {
 func NewTestConfig() *config.Config {
 	return &config.Config{
 		GinMode:                         "test",
-		DbAddress:                       "inmemory://test",
+		DbAddress:                       "file::memory:?cache=shared",
 		JwtSecret:                       "test-jwt-secret",
 		UserTokenExpiry:                 5,
 		OauthStateTokenExpiry:           5,
