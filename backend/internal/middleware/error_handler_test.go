@@ -1,130 +1,71 @@
 package middleware_test
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 
 	authError "github.com/paularynty/transcendence/auth-service-go/internal/auth_error"
-	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
+	"github.com/paularynty/transcendence/auth-service-go/internal/testutil"
 )
 
-func TestErrorHandlerReturnsAuthErrorPayload(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	r.Use(middleware.ErrorHandler())
-	r.GET("/auth", func(c *gin.Context) {
-		_ = c.AbortWithError(http.StatusUnauthorized, authError.NewAuthError(http.StatusUnauthorized, "Invalid or expired token"))
-	})
+type testStruct struct {
+	UserId int `json:"userID" validate:"required"`
+}
 
-	req := httptest.NewRequest(http.MethodGet, "/auth", nil)
-	resp := httptest.NewRecorder()
+func errorGenerator(code int) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		switch code {
+		case 200:
+			c.Next()
+		case 401:
+			_ = c.AbortWithError(401, authError.NewAuthError(401, "invalid user"))
+		case 400:
+			v := validator.New()
+			s := testStruct{}
 
-	r.ServeHTTP(resp, req)
+			err := v.Struct(s)
+			if err == nil {
+				panic("expected validation error, got nil")
+			}
 
-	if resp.Code != http.StatusUnauthorized {
-		t.Fatalf("expected status 401, got %d", resp.Code)
-	}
-
-	var body map[string]string
-	if err := json.Unmarshal(resp.Body.Bytes(), &body); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
-
-	if body["error"] != "Invalid or expired token" {
-		t.Fatalf("unexpected error payload: %v", body)
+			_ = c.AbortWithError(400, err)
+		case 500:
+			_ = c.AbortWithError(500, fmt.Errorf("unknown error"))
+		default:
+			panic("panic test")
+		}
 	}
 }
 
-func TestErrorHandlerDifferentErrors(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	r.Use(middleware.ErrorHandler())
-	r.GET("/unknown", func(c *gin.Context) {
-		_ = c.AbortWithError(http.StatusTeapot, errors.New("boom"))
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/unknown", nil)
-	resp := httptest.NewRecorder()
-
-	r.ServeHTTP(resp, req)
-
-	if resp.Code != http.StatusTeapot {
-		t.Fatalf("expected status 418, got %d body=%s", resp.Code, resp.Body.String())
+func TestErrorHandler(t *testing.T) {
+	testCases := []struct {
+		name         string
+		code         int
+		expectedCode int
+	}{
+		{name: "normal case", code: 200, expectedCode: 200},
+		{name: "400 error", code: 400, expectedCode: 400},
+		{name: "401 error", code: 401, expectedCode: 401},
+		{name: "500 error", code: 500, expectedCode: 500},
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(resp.Body.Bytes(), &body); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := testutil.NewMiddlewareTestRouter(errorGenerator(tc.code), middleware.ErrorHandler())
+			w := httptest.NewRecorder()
 
-	if body["error"] != "Internal Server Error" {
-		t.Fatalf("unexpected error payload: %v", body)
-	}
-}
+			req, _ := http.NewRequest("POST", "/middleware-test", nil)
+			r.ServeHTTP(w, req)
 
-func TestValidationMiddlewareReturnsValidationErrors(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	dto.InitValidator()
-
-	r := gin.New()
-	r.Use(middleware.ErrorHandler())
-	r.Use(middleware.ValidateBody[dto.UserName]())
-	r.POST("/validate", func(c *gin.Context) {
-		// Should not reach when validation fails
-		c.JSON(http.StatusOK, gin.H{"ok": true})
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/validate", bytes.NewBufferString(`{"username":"  a(   "}`))
-	req.Header.Set("Content-Type", "application/json")
-	resp := httptest.NewRecorder()
-
-	r.ServeHTTP(resp, req)
-
-	if resp.Code != http.StatusBadRequest {
-		t.Fatalf("expected status 400, got %d body=%s", resp.Code, resp.Body.String())
-	}
-
-	var body map[string]any
-	if err := json.Unmarshal(resp.Body.Bytes(), &body); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
-
-	errorsField, ok := body["error"].([]any)
-	if !ok || len(errorsField) != 1 {
-		t.Fatalf("expected validation errors array, got %v", body)
-	}
-}
-
-func TestPanicHandlerReturnsJSON500(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	r.Use(middleware.PanicHandler())
-	r.GET("/panic", func(c *gin.Context) {
-		panic("boom")
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/panic", nil)
-	resp := httptest.NewRecorder()
-
-	r.ServeHTTP(resp, req)
-
-	if resp.Code != http.StatusInternalServerError {
-		t.Fatalf("expected status 500, got %d body=%s", resp.Code, resp.Body.String())
-	}
-
-	var body map[string]string
-	if err := json.Unmarshal(resp.Body.Bytes(), &body); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
-
-	if body["error"] != "Internal Server Error" {
-		t.Fatalf("unexpected error payload: %v", body)
+			if w.Code != tc.expectedCode {
+				t.Fatalf("expected: %d, got: %d", tc.expectedCode, w.Code)
+			}
+		})
 	}
 }

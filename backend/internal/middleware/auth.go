@@ -1,19 +1,25 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	authError "github.com/paularynty/transcendence/auth-service-go/internal/auth_error"
-	"github.com/paularynty/transcendence/auth-service-go/internal/service"
+	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
 )
 
 const PrefixBearer = "Bearer "
 
-func Auth(userService *service.UserService) gin.HandlerFunc {
+type AuthService interface {
+	ValidateUserToken(ctx context.Context, tokenString string, userID uint) error
+	GetDependency() *dependency.Dependency
+}
+
+func Auth(authService AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 
@@ -24,13 +30,15 @@ func Auth(userService *service.UserService) gin.HandlerFunc {
 
 		tokenString := authHeader[len(PrefixBearer):]
 
-		userJwtPayload, err := jwt.ValidateUserTokenGeneric(userService.Dep, tokenString)
+		// JWT validation
+		userJwtPayload, err := jwt.ValidateUserTokenGeneric(authService.GetDependency(), tokenString)
 		if err != nil {
 			_ = c.AbortWithError(401, authError.NewAuthError(401, "Invalid or expired token"))
 			return
 		}
 
-		err = userService.ValidateUserToken(c.Request.Context(), tokenString, userJwtPayload.UserID)
+		// Online validation
+		err = authService.ValidateUserToken(c.Request.Context(), tokenString, userJwtPayload.UserID)
 
 		var authError *authError.AuthError
 		if err != nil {

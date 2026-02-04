@@ -1,7 +1,6 @@
 package middleware_test
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,142 +9,172 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
+	"github.com/paularynty/transcendence/auth-service-go/internal/testutil"
 )
 
-func TestAllowRequestResetsAfterWindow(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+func TestRateLimiter(t *testing.T) {
+	testDurationShort := 30 * time.Millisecond
+	testDurationMedium := 50 * time.Millisecond
+	testDurationLong := 100 * time.Millisecond
+	testLimitLow := 1
+	testLimitMedium := 2
+	testSleepShort := 20 * time.Millisecond
+	testSleepReset := 60 * time.Millisecond
+	testCleanup := time.Minute
 
-	rl := middleware.NewRateLimiter(30*time.Millisecond, 2, time.Minute)
-	clientID := "client-1"
-
-	if !rl.AllowRequest(clientID) {
-		t.Fatalf("expected first request to pass")
+	testCases := []struct {
+		name           string
+		duration       time.Duration
+		limit          int
+		sleep          time.Duration
+		sleepAfter     int
+		methods        []string
+		remoteAddrs    []string
+		expectedStatus []int
+		needOptions    bool
+	}{
+		{
+			name:           "blocks after limit",
+			duration:       testDurationLong,
+			limit:          testLimitMedium,
+			methods:        []string{http.MethodPost, http.MethodPost, http.MethodPost},
+			remoteAddrs:    []string{"203.0.113.1:1000", "203.0.113.1:1000", "203.0.113.1:1000"},
+			expectedStatus: []int{200, 200, 429},
+		},
+		{
+			name:           "blocks within window",
+			duration:       testDurationMedium,
+			limit:          testLimitLow,
+			sleep:          testSleepShort,
+			sleepAfter:     0,
+			methods:        []string{http.MethodPost, http.MethodPost},
+			remoteAddrs:    []string{"203.0.113.9:1111", "203.0.113.9:1111"},
+			expectedStatus: []int{200, 429},
+		},
+		{
+			name:           "resets after window",
+			duration:       testDurationShort,
+			limit:          testLimitLow,
+			sleep:          testSleepReset,
+			sleepAfter:     1,
+			methods:        []string{http.MethodPost, http.MethodPost, http.MethodPost},
+			remoteAddrs:    []string{"198.51.100.3:9999", "198.51.100.3:9999", "198.51.100.3:9999"},
+			expectedStatus: []int{200, 429, 200},
+		},
+		{
+			name:           "options not limited",
+			duration:       testDurationLong,
+			limit:          testLimitLow,
+			methods:        []string{http.MethodOptions, http.MethodOptions, http.MethodOptions},
+			remoteAddrs:    []string{"203.0.113.8:4444", "203.0.113.8:4444", "203.0.113.8:4444"},
+			expectedStatus: []int{204, 204, 204},
+			needOptions:    true,
+		},
+		{
+			name:           "options bypass",
+			duration:       testDurationLong,
+			limit:          testLimitLow,
+			methods:        []string{http.MethodOptions, http.MethodOptions, http.MethodOptions, http.MethodPost, http.MethodPost},
+			remoteAddrs:    []string{"203.0.113.2:5555", "203.0.113.2:5555", "203.0.113.2:5555", "203.0.113.2:5555", "203.0.113.2:5555"},
+			expectedStatus: []int{204, 204, 204, 200, 429},
+			needOptions:    true,
+		},
+		{
+			name:           "client isolation",
+			duration:       testDurationLong,
+			limit:          testLimitLow,
+			methods:        []string{http.MethodPost, http.MethodPost, http.MethodPost},
+			remoteAddrs:    []string{"203.0.113.10:5000", "203.0.113.11:5000", "203.0.113.10:6000"},
+			expectedStatus: []int{200, 200, 429},
+		},
 	}
-	if !rl.AllowRequest(clientID) {
-		t.Fatalf("expected second request to pass within window")
-	}
-	if rl.AllowRequest(clientID) {
-		t.Fatalf("expected third request to be blocked within window")
-	}
 
-	time.Sleep(40 * time.Millisecond)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rl := middleware.NewRateLimiter(tc.duration, tc.limit, testCleanup)
+			r := testutil.NewMiddlewareTestRouter(rl.RateLimit(), middleware.ErrorHandler())
+			if tc.needOptions {
+				r.OPTIONS("/middleware-test", func(c *gin.Context) {
+					c.Status(204)
+				})
+			}
 
-	if !rl.AllowRequest(clientID) {
-		t.Fatalf("expected requests to be allowed after window resets")
+			for i := 0; i < len(tc.methods); i++ {
+				req, _ := http.NewRequest(tc.methods[i], "/middleware-test", nil)
+				req.RemoteAddr = tc.remoteAddrs[i]
+
+				w := httptest.NewRecorder()
+				r.ServeHTTP(w, req)
+
+				if w.Code != tc.expectedStatus[i] {
+					t.Fatalf("expected: %d, got: %d", tc.expectedStatus[i], w.Code)
+				}
+
+				if tc.sleep > 0 && i == tc.sleepAfter {
+					time.Sleep(tc.sleep)
+				}
+			}
+		})
 	}
 }
 
-func TestRateLimitMiddlewareBlocksAfterLimit(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+func TestAllowRequest(t *testing.T) {
+	testDuration := 50 * time.Millisecond
+	testLimit := 1
+	testCleanup := time.Minute
+	testCleanupFast := 1 * time.Millisecond
 
-	rl := middleware.NewRateLimiter(50*time.Millisecond, 1, time.Minute)
-
-	r := gin.New()
-	r.Use(middleware.ErrorHandler())
-	r.Use(rl.RateLimit())
-	r.GET("/limited", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"ok": true})
-	})
-
-	req1 := httptest.NewRequest(http.MethodGet, "/limited", nil)
-	req1.RemoteAddr = "198.51.100.10:1234"
-	resp1 := httptest.NewRecorder()
-	r.ServeHTTP(resp1, req1)
-	if resp1.Code != http.StatusOK {
-		t.Fatalf("expected first request status 200, got %d", resp1.Code)
+	type step struct {
+		sleep  time.Duration
+		client string
+		expect bool
 	}
 
-	req2 := httptest.NewRequest(http.MethodGet, "/limited", nil)
-	req2.RemoteAddr = "198.51.100.10:5678"
-	resp2 := httptest.NewRecorder()
-	r.ServeHTTP(resp2, req2)
-
-	if resp2.Code != http.StatusTooManyRequests {
-		t.Fatalf("expected status 429, got %d body=%s", resp2.Code, resp2.Body.String())
+	testCases := []struct {
+		name     string
+		duration time.Duration
+		limit    int
+		cleanup  time.Duration
+		steps    []step
+	}{
+		{
+			name:     "limit reached",
+			duration: testDuration,
+			limit:    testLimit,
+			cleanup:  testCleanup,
+			steps: []step{
+				{client: "client-a", expect: true},
+				{client: "client-a", expect: false},
+			},
+		},
+		{
+			name:     "cleanup path",
+			duration: testDuration,
+			limit:    testLimit,
+			cleanup:  testCleanupFast,
+			steps: []step{
+				{client: "client-a", expect: true},
+				{sleep: 2 * time.Millisecond},
+				{client: "client-b", expect: true},
+			},
+		},
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(resp2.Body.Bytes(), &body); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
-	if body["error"] != "Too many requests" {
-		t.Fatalf("unexpected error payload: %v", body)
-	}
-}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rl := middleware.NewRateLimiter(tc.duration, tc.limit, tc.cleanup)
 
-func TestRateLimitMiddlewareSkipsOptions(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+			for _, s := range tc.steps {
+				if s.sleep > 0 {
+					time.Sleep(s.sleep)
+					continue
+				}
 
-	rl := middleware.NewRateLimiter(50*time.Millisecond, 1, time.Minute)
-
-	r := gin.New()
-	r.Use(middleware.ErrorHandler())
-	r.Use(rl.RateLimit())
-	r.OPTIONS("/limited", func(c *gin.Context) {
-		c.Status(http.StatusNoContent)
-	})
-	r.GET("/limited", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"ok": true})
-	})
-
-	reqOptions := httptest.NewRequest(http.MethodOptions, "/limited", nil)
-	reqOptions.RemoteAddr = "198.51.100.20:9999"
-	for i := 0; i < 3; i++ {
-		resp := httptest.NewRecorder()
-		r.ServeHTTP(resp, reqOptions)
-		if resp.Code != http.StatusNoContent {
-			t.Fatalf("expected OPTIONS to bypass limiter with 204, got %d", resp.Code)
-		}
-	}
-
-	reqGet := httptest.NewRequest(http.MethodGet, "/limited", nil)
-	reqGet.RemoteAddr = "198.51.100.20:9999"
-	respGet1 := httptest.NewRecorder()
-	r.ServeHTTP(respGet1, reqGet)
-	if respGet1.Code != http.StatusOK {
-		t.Fatalf("expected first GET 200 after OPTIONS calls, got %d", respGet1.Code)
-	}
-
-	respGet2 := httptest.NewRecorder()
-	r.ServeHTTP(respGet2, reqGet)
-	if respGet2.Code != http.StatusTooManyRequests {
-		t.Fatalf("expected second GET to be rate limited with 429, got %d", respGet2.Code)
-	}
-}
-
-func TestRateLimitMiddlewareUsesClientSpecificCounters(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	rl := middleware.NewRateLimiter(100*time.Millisecond, 1, time.Minute)
-
-	r := gin.New()
-	r.Use(middleware.ErrorHandler())
-	r.Use(rl.RateLimit())
-	r.GET("/limited", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"ok": true})
-	})
-
-	reqClientA := httptest.NewRequest(http.MethodGet, "/limited", nil)
-	reqClientA.RemoteAddr = "203.0.113.1:5000"
-	respA1 := httptest.NewRecorder()
-	r.ServeHTTP(respA1, reqClientA)
-	if respA1.Code != http.StatusOK {
-		t.Fatalf("expected client A first request 200, got %d", respA1.Code)
-	}
-
-	reqClientB := httptest.NewRequest(http.MethodGet, "/limited", nil)
-	reqClientB.RemoteAddr = "203.0.113.2:5000"
-	respB := httptest.NewRecorder()
-	r.ServeHTTP(respB, reqClientB)
-	if respB.Code != http.StatusOK {
-		t.Fatalf("expected client B request 200, got %d body=%s", respB.Code, respB.Body.String())
-	}
-
-	reqClientA2 := httptest.NewRequest(http.MethodGet, "/limited", nil)
-	reqClientA2.RemoteAddr = "203.0.113.1:6000"
-	respA2 := httptest.NewRecorder()
-	r.ServeHTTP(respA2, reqClientA2)
-	if respA2.Code != http.StatusTooManyRequests {
-		t.Fatalf("expected client A second request 429, got %d", respA2.Code)
+				allowed := rl.AllowRequest(s.client)
+				if allowed != s.expect {
+					t.Fatalf("expected: %v, got: %v", s.expect, allowed)
+				}
+			}
+		})
 	}
 }

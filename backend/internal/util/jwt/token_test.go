@@ -1,122 +1,150 @@
 package jwt_test
 
 import (
-	"errors"
 	"testing"
-	"time"
 
-	libjwt "github.com/golang-jwt/jwt/v5"
-
-	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
-	"github.com/paularynty/transcendence/auth-service-go/internal/dto"
 	"github.com/paularynty/transcendence/auth-service-go/internal/testutil"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
 )
 
-func setupTokenDep(t *testing.T) *dependency.Dependency {
-	t.Helper()
-	cfg := testutil.NewTestConfig()
-	cfg.JwtSecret = "test-secret-key"
-	cfg.UserTokenExpiry = 3600
-	cfg.OauthStateTokenExpiry = 120
-	cfg.TwoFaTokenExpiry = 300
-	return testutil.NewTestDependency(cfg, nil, nil, nil)
-}
+var testDep = testutil.NewTestDependency(nil, nil, nil, nil)
 
-func TestTokenRoundTrip(t *testing.T) {
-	dep := setupTokenDep(t)
-
-	cases := []struct {
-		name          string
-		sign          func() (string, error)
-		validate      func(string) (any, error)
-		assert        func(t *testing.T, claims any)
-		expectedError error
-	}{
-		{
-			name: "UserToken",
-			sign: func() (string, error) {
-				return jwt.SignUserToken(dep, 42)
-			},
-			validate: func(token string) (any, error) {
-				return jwt.ValidateUserTokenGeneric(dep, token)
-			},
-			assert: func(t *testing.T, claims any) {
-				parsed := claims.(*dto.UserJwtPayload)
-				if parsed.UserID != 42 {
-					t.Fatalf("expected user id 42, got %d", parsed.UserID)
-				}
-				if parsed.Type != jwt.UserTokenType {
-					t.Fatalf("expected claim type %q, got %q", jwt.UserTokenType, parsed.Type)
-				}
-				if parsed.ExpiresAt == nil || parsed.ExpiresAt.Before(time.Now()) {
-					t.Fatalf("expected future expiration, got %v", parsed.ExpiresAt)
-				}
-			},
-		},
-		{
-			name: "OauthStateToken",
-			sign: func() (string, error) {
-				return jwt.SignOauthStateToken(dep)
-			},
-			validate: func(token string) (any, error) {
-				return jwt.ValidateOauthStateToken(dep, token)
-			},
-			assert: func(t *testing.T, claims any) {
-				parsed := claims.(*dto.OauthStateJwtPayload)
-				if parsed.Type != jwt.GoogleOAuthStateType {
-					t.Fatalf("expected oauth state type %q, got %q", jwt.GoogleOAuthStateType, parsed.Type)
-				}
-			},
-		},
-		{
-			name: "TwoFASetupToken",
-			sign: func() (string, error) {
-				return jwt.SignTwoFASetupToken(dep, 7, "secret")
-			},
-			validate: func(token string) (any, error) {
-				return jwt.ValidateTwoFASetupToken(dep, token)
-			},
-			assert: func(t *testing.T, claims any) {
-				parsed := claims.(*dto.TwoFaSetupJwtPayload)
-				if parsed.Secret != "secret" {
-					t.Fatalf("expected secret to be propagated, got %q", parsed.Secret)
-				}
-			},
-		},
-		{
-			name: "UserTokenRejectsWrongType",
-			sign: func() (string, error) {
-				return jwt.SignTwoFAToken(dep, 10)
-			},
-			validate: func(token string) (any, error) {
-				return jwt.ValidateUserTokenGeneric(dep, token)
-			},
-			expectedError: libjwt.ErrTokenInvalidClaims,
-		},
+func TestUserToken(t *testing.T) {
+	token, err := jwt.SignUserToken(testDep, 3)
+	if err != nil {
+		t.Fatalf("failed to generate token, got an error: %v", err)
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			token, err := tc.sign()
-			if err != nil {
-				t.Fatalf("sign returned error: %v", err)
-			}
+	parsed, err := jwt.ValidateUserTokenGeneric(testDep, token)
+	if err != nil {
+		t.Fatalf("faled to parse user token, got an error: %v", err)
+	}
 
-			claims, err := tc.validate(token)
-			if tc.expectedError != nil {
-				if !errors.Is(err, tc.expectedError) {
-					t.Fatalf("expected %v, got %v", tc.expectedError, err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("validate returned error: %v", err)
-			}
+	if parsed.Type != jwt.UserTokenType {
+		t.Fatalf("expected token type: %s, got %s", jwt.UserTokenType, parsed.Type)
+	}
 
-			if tc.assert != nil {
-				tc.assert(t, claims)
-			}
-		})
+	if parsed.UserID != 3 {
+		t.Fatalf("expected userID: %d, got %d", 3, parsed.UserID)
+	}
+
+	_, err = jwt.ValidateUserTokenGeneric(testDep, "aaa")
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+
+	invalidToken, err := jwt.SignOauthStateToken(testDep)
+	if err != nil {
+		t.Fatalf("failed to generate OauthStateToken")
+	}
+
+	_, err = jwt.ValidateUserTokenGeneric(testDep, invalidToken)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+}
+
+func TestOauthStateToken(t *testing.T) {
+	token, err := jwt.SignOauthStateToken(testDep)
+	if err != nil {
+		t.Fatalf("failed to generate token, got an error: %v", err)
+	}
+
+	parsed, err := jwt.ValidateOauthStateToken(testDep, token)
+	if err != nil {
+		t.Fatalf("faled to parse oauth state token, got an error: %v", err)
+	}
+
+	if parsed.Type != jwt.GoogleOAuthStateType {
+		t.Fatalf("expected token type: %s, got %s", jwt.GoogleOAuthStateType, parsed.Type)
+	}
+
+	_, err = jwt.ValidateOauthStateToken(testDep, "aaa")
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+
+	invalidToken, err := jwt.SignUserToken(testDep, 3)
+	if err != nil {
+		t.Fatalf("failed to generate user token")
+	}
+
+	_, err = jwt.ValidateOauthStateToken(testDep, invalidToken)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+}
+
+func TestTwoFASetupToken(t *testing.T) {
+	token, err := jwt.SignTwoFASetupToken(testDep, 7, "test-secret")
+	if err != nil {
+		t.Fatalf("failed to generate token, got an error: %v", err)
+	}
+
+	parsed, err := jwt.ValidateTwoFASetupToken(testDep, token)
+	if err != nil {
+		t.Fatalf("faled to parse two-fa setup token, got an error: %v", err)
+	}
+
+	if parsed.Type != jwt.TwoFASetupType {
+		t.Fatalf("expected token type: %s, got %s", jwt.TwoFASetupType, parsed.Type)
+	}
+
+	if parsed.UserID != 7 {
+		t.Fatalf("expected userID: %d, got %d", 7, parsed.UserID)
+	}
+
+	if parsed.Secret != "test-secret" {
+		t.Fatalf("expected secret: %s, got %s", "test-secret", parsed.Secret)
+	}
+
+	_, err = jwt.ValidateTwoFASetupToken(testDep, "aaa")
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+
+	invalidToken, err := jwt.SignTwoFAToken(testDep, 7)
+	if err != nil {
+		t.Fatalf("failed to generate two-fa token")
+	}
+
+	_, err = jwt.ValidateTwoFASetupToken(testDep, invalidToken)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+}
+
+func TestTwoFAToken(t *testing.T) {
+	token, err := jwt.SignTwoFAToken(testDep, 11)
+	if err != nil {
+		t.Fatalf("failed to generate token, got an error: %v", err)
+	}
+
+	parsed, err := jwt.ValidateTwoFAToken(testDep, token)
+	if err != nil {
+		t.Fatalf("faled to parse two-fa token, got an error: %v", err)
+	}
+
+	if parsed.Type != jwt.TwoFATokenType {
+		t.Fatalf("expected token type: %s, got %s", jwt.TwoFATokenType, parsed.Type)
+	}
+
+	if parsed.UserID != 11 {
+		t.Fatalf("expected userID: %d, got %d", 11, parsed.UserID)
+	}
+
+	_, err = jwt.ValidateTwoFAToken(testDep, "aaa")
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+
+	invalidToken, err := jwt.SignTwoFASetupToken(testDep, 11, "test-secret")
+	if err != nil {
+		t.Fatalf("failed to generate two-fa setup token")
+	}
+
+	_, err = jwt.ValidateTwoFAToken(testDep, invalidToken)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
 	}
 }

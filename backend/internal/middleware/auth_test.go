@@ -1,146 +1,98 @@
 package middleware_test
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
-
-	model "github.com/paularynty/transcendence/auth-service-go/internal/db"
+	authError "github.com/paularynty/transcendence/auth-service-go/internal/auth_error"
 	"github.com/paularynty/transcendence/auth-service-go/internal/dependency"
 	"github.com/paularynty/transcendence/auth-service-go/internal/middleware"
-	"github.com/paularynty/transcendence/auth-service-go/internal/service"
 	"github.com/paularynty/transcendence/auth-service-go/internal/testutil"
 	"github.com/paularynty/transcendence/auth-service-go/internal/util/jwt"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
-func setupAuthDeps(t *testing.T) (*dependency.Dependency, *service.UserService) {
-	t.Helper()
-	cfg := testutil.NewTestConfig()
-	cfg.JwtSecret = "test-secret-key"
-	cfg.UserTokenExpiry = 3600
-	cfg.OauthStateTokenExpiry = 120
-	cfg.TwoFaTokenExpiry = 300
-	dbName := "file:" + t.Name() + "?mode=memory&cache=shared"
-	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{TranslateError: true})
-	if err != nil {
-		t.Fatalf("failed to connect to db: %v", err)
-	}
-	if err := db.AutoMigrate(&model.User{}, &model.Token{}); err != nil {
-		t.Fatalf("failed to migrate db: %v", err)
-	}
-	dep := testutil.NewTestDependency(cfg, db, nil, nil)
-	userService, err := service.NewUserService(dep)
-	if err != nil {
-		t.Fatalf("failed to create user service: %v", err)
-	}
-	return dep, userService
+var testDep = testutil.NewTestDependency(nil, nil, nil, nil)
+
+type testAuthService struct {
+	returnCode int
 }
 
-func TestAuthMiddlewareRejectsMissingToken(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	_, userService := setupAuthDeps(t)
+func (ts *testAuthService) GetDependency() *dependency.Dependency {
+	return testDep
+}
 
-	r := gin.New()
-	r.Use(middleware.ErrorHandler())
-	r.Use(middleware.Auth(userService))
-	r.GET("/protected", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"ok": true})
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
-	resp := httptest.NewRecorder()
-
-	r.ServeHTTP(resp, req)
-
-	if resp.Code != http.StatusUnauthorized {
-		t.Fatalf("expected status 401, got %d", resp.Code)
-	}
-
-	var body map[string]string
-	if err := json.Unmarshal(resp.Body.Bytes(), &body); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
-
-	if body["error"] != "Invalid or expired token" {
-		t.Fatalf("unexpected error message: %v", body)
+func (ts *testAuthService) ValidateUserToken(ctx context.Context, tokenString string, userID uint) error {
+	switch ts.returnCode {
+	case 200:
+		return nil
+	case 401:
+		return authError.NewAuthError(401, "invalid token")
+	default:
+		return fmt.Errorf("unexpected error")
 	}
 }
 
-func TestAuthMiddlewareAllowsValidToken(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	dep, userService := setupAuthDeps(t)
-
-	token, err := jwt.SignUserToken(dep, 99)
-	if err != nil {
-		t.Fatalf("failed to sign user token: %v", err)
-	}
-	if err := dep.DB.Create(&model.User{Model: gorm.Model{ID: 99}, Username: "u99", Email: "u99@example.com"}).Error; err != nil {
-		t.Fatalf("failed to create user: %v", err)
-	}
-	if err := dep.DB.Create(&model.Token{UserID: 99, Token: token}).Error; err != nil {
-		t.Fatalf("failed to create token: %v", err)
-	}
-
-	r := gin.New()
-	r.Use(middleware.ErrorHandler())
-	r.Use(middleware.Auth(userService))
-	r.GET("/protected", func(c *gin.Context) {
-		userID, ok := c.Get("userID")
-		if !ok {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "missing userID"})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"userId": userID})
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
-	req.Header.Set("Authorization", middleware.PrefixBearer+token)
-	resp := httptest.NewRecorder()
-
-	r.ServeHTTP(resp, req)
-
-	if resp.Code != http.StatusOK {
-		t.Fatalf("expected status 200, got %d", resp.Code)
-	}
-
-	var body map[string]any
-	if err := json.Unmarshal(resp.Body.Bytes(), &body); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
-
-	if val, ok := body["userId"].(float64); !ok || val != 99 {
-		t.Fatalf("expected userId 99, got %v", body["userId"])
-	}
+func newTestAuthService(returnCode int) middleware.AuthService {
+	return &testAuthService{returnCode: returnCode}
 }
 
-func TestAuthMiddlewareRejectsInvalidToken(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	dep, userService := setupAuthDeps(t)
+const notSet = "notSet"
+const userID = 11
 
-	token, err := jwt.SignTwoFAToken(dep, 10)
+var resp struct {
+	UserID uint   `json:"userID"`
+	Token  string `json:"token"`
+}
+
+func TestAuth(t *testing.T) {
+	validToken, err := jwt.SignUserToken(testDep, userID)
 	if err != nil {
-		t.Fatalf("failed to sign 2fa token: %v", err)
+		t.Fatalf("failed to sign test token, err: %v", err)
 	}
 
-	r := gin.New()
-	r.Use(middleware.ErrorHandler())
-	r.Use(middleware.Auth(userService))
-	r.GET("/protected", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"ok": true})
-	})
+	testCases := []struct {
+		name           string
+		token          string
+		expectedStatus int
+	}{
+		{name: "valid token", token: validToken, expectedStatus: 200},
+		{name: "invalid token", token: "aaa", expectedStatus: 401},
+		{name: "token not set", token: notSet, expectedStatus: 401},
+	}
 
-	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
-	req.Header.Set("Authorization", middleware.PrefixBearer+token)
-	resp := httptest.NewRecorder()
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := testutil.NewMiddlewareTestRouter(middleware.Auth(newTestAuthService(tc.expectedStatus)), nil)
+			req, _ := http.NewRequest("POST", "/middleware-test", nil)
 
-	r.ServeHTTP(resp, req)
+			if tc.token != notSet {
+				req.Header.Add("Authorization", fmt.Sprintf("%s%s", middleware.PrefixBearer, tc.token))
+			}
 
-	if resp.Code != http.StatusUnauthorized {
-		t.Fatalf("expected status 401, got %d", resp.Code)
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			if w.Code != tc.expectedStatus {
+				t.Fatalf("expected: %d, got: %d", tc.expectedStatus, w.Code)
+			}
+
+			if w.Code == 200 {
+				if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+					t.Fatalf("failed to unmarshal response: %v", err)
+				}
+
+				if resp.Token != validToken {
+					t.Fatalf("token does not set to request")
+				}
+
+				if resp.UserID != userID {
+					t.Fatalf("userID does not set to request, expected: %d, got: %d", userID, resp.UserID)
+				}
+			}
+		})
 	}
 }

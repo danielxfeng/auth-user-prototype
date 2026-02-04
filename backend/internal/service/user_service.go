@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -24,6 +25,25 @@ const BaseGoogleOAuthURL = "https://accounts.google.com/o/oauth2/v2/auth"
 
 type UserService struct {
 	Dep *dependency.Dependency
+}
+
+func NewUserService(dep *dependency.Dependency) (*UserService, error) {
+
+	if dep.DB == nil {
+		return nil, fmt.Errorf("UserService: db is nil")
+	}
+
+	if dep.Cfg.IsRedisEnabled && dep.Redis == nil {
+		return nil, fmt.Errorf("UserService: redis is enabled but redis client is nil")
+	}
+
+	return &UserService{
+		Dep: dep,
+	}, nil
+}
+
+func (s *UserService) GetDependency() *dependency.Dependency {
+	return s.Dep
 }
 
 func (s *UserService) CreateUser(ctx context.Context, request *dto.CreateUserRequest) (*dto.UserWithoutTokenResponse, error) {
@@ -171,7 +191,11 @@ func (s *UserService) UpdateUserProfile(ctx context.Context, userID uint, reques
 	}
 
 	modelUser.Username = request.Username
-	modelUser.Avatar = request.Avatar
+	if request.Avatar != nil && strings.TrimSpace(*request.Avatar) == "" {
+		modelUser.Avatar = nil
+	} else {
+		modelUser.Avatar = request.Avatar
+	}
 	modelUser.Email = request.Email
 
 	err = s.Dep.DB.WithContext(ctx).Save(&modelUser).Error
