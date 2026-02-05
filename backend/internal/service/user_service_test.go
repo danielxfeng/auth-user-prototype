@@ -121,6 +121,25 @@ func TestCreateUser(t *testing.T) {
 }
 
 func TestLoginUser(t *testing.T) {
+	t.Run("user not found", func(t *testing.T) {
+		userService, _ := testutil.NewTestUserService(t)
+
+		_, err := userService.LoginUser(context.Background(), &dto.LoginUserRequest{
+			Identifier: dto.Identifier{Identifier: "missing@example.com"},
+			Password:   dto.Password{Password: "Password.777"},
+		})
+		if err == nil {
+			t.Fatalf("expected error, got nil")
+		}
+		var authErr *authError.AuthError
+		if !errors.As(err, &authErr) {
+			t.Fatalf("expected auth error, got: %v", err)
+		}
+		if authErr.Status != 401 {
+			t.Fatalf("expected status 401, got %d", authErr.Status)
+		}
+	})
+
 	t.Run("invalid credentials", func(t *testing.T) {
 		userService, myDB := testutil.NewTestUserService(t)
 
