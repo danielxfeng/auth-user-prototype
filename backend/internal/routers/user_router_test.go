@@ -2,7 +2,6 @@ package routers_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -30,10 +29,7 @@ func testRouterFactory(t *testing.T, testCfg *config.Config, setDBDown bool) *gi
 
 	testLogger := testutil.NewTestLogger()
 
-	if testCfg.DbAddress == "file::memory:?cache=shared" {
-		safeName := strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
-		testCfg.DbAddress = fmt.Sprintf("file:%s?mode=memory&cache=shared", safeName)
-	}
+	testCfg.DbAddress = testutil.GetSafeTestDBName(testCfg.DbAddress, t.Name())
 
 	myDB, err := db.GetDB(testCfg.DbAddress, testLogger)
 	if err != nil {
