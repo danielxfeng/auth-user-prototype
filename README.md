@@ -75,19 +75,29 @@ cd auth-user-prototype
 
 ```bash
 cd backend
+cp .env.sample .env
 make dev
 ```
 
 Then navigate to `http://localhost:3003/api/docs/index.html` for swagger.
 
-Redis is optional. To enable it locally:
+Required env vars for backend startup:
+
+- `JWT_SECRET`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+
+The provided `backend/.env.sample` already includes local placeholder values for these, so backend can start even if you are not testing Google OAuth.
+
+Redis is optional. In local development it is disabled by default (`REDIS_URL=` in `.env`).
+To enable Redis locally:
 
 ```bash
 # example: run redis with docker
 docker run --rm -p 6379:6379 redis:latest
 
 # enable redis mode for the backend
-export REDIS_URL=redis://localhost:6379/0
+export REDIS_URL=redis://localhost:6379/0 # or set it in backend/.env
 ```
 
 Token extension (sliding expiration) in Redis mode:
